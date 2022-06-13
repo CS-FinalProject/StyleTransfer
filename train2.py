@@ -41,14 +41,15 @@ def train_model(dataset_path: str, epochs: int, batch_size: int, learning_rate: 
             optimizer_G.step()
 
             # Update discriminators
-            discriminator_a_loss = update_discriminator(discriminator_a, item_a, generated_item_a, adversarial_loss_func, batch_size, device,
-                                 optimizer_D_A)
-            discriminator_b_loss = update_discriminator(discriminator_b, item_b, generated_item_b, adversarial_loss_func, batch_size, device,
-                                 optimizer_D_B)
+            discriminator_a_loss = update_discriminator(discriminator_a, item_a, generated_item_a,
+                                                        adversarial_loss_func, batch_size, device,
+                                                        optimizer_D_A)
+            discriminator_b_loss = update_discriminator(discriminator_b, item_b, generated_item_b,
+                                                        adversarial_loss_func, batch_size, device,
+                                                        optimizer_D_B)
 
-            logging.info("[{}/{}] | G loss: {} | D loss: {}".format(epoch_idx, epochs, total_loss, discriminator_b_loss + discriminator_a_loss))
-
-
+            logging.info("[{}/{}] | G loss: {} | D loss: {}".format(epoch_idx, epochs, total_loss,
+                                                                    discriminator_b_loss + discriminator_a_loss))
 
 
 def update_discriminator(discriminator: Discriminator, real_image, fake_image, loss_func, batch_size: int, device,
@@ -77,13 +78,20 @@ def update_discriminator(discriminator: Discriminator, real_image, fake_image, l
     return loss
 
 
-def calc_accuracy(dataset: ImageDataset, )
-
-
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("dataset", help="Path to the monet2photo dataset", default="./monet2photo")
     arg_parser.add_argument("image-size", help="Size of data crop", default=256)
+
+    G_A2B = Generator()
+    G_B2A = Generator()
+
+    D_A = Discriminator()
+    D_B = Discriminator()
+
+
+
+
 
 
 if __name__ == '__main__':
