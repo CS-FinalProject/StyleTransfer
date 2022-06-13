@@ -15,6 +15,7 @@ import random
 
 import torch
 
+IMAGE_SIZE = 64
 
 class ReplayBuffer:
     def __init__(self, max_size=50):
