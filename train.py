@@ -15,6 +15,7 @@ import argparse
 import itertools
 import os
 import random
+import wandb
 
 import torch.backends.cudnn as cudnn
 import torch.utils.data
@@ -29,6 +30,9 @@ from cyclegan_pytorch import Generator
 from cyclegan_pytorch import ImageDataset
 from cyclegan_pytorch import ReplayBuffer
 from cyclegan_pytorch import weights_init
+
+wandb.login(key="24244c351814b9bc7a521d64765acc25852118c3")
+wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
 
 parser = argparse.ArgumentParser(
     description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks`")
@@ -66,6 +70,12 @@ parser.add_argument("--manualSeed", type=int,
 
 args = parser.parse_args()
 print(args)
+
+wandb.config = {
+  "learning_rate": args.lr,
+  "epochs": args.epochs,
+  "batch_size": args.batch_size
+}
 
 try:
     os.makedirs(args.outf)
@@ -266,6 +276,19 @@ for epoch in range(0, args.epochs):
             f"Loss_G_identity: {(loss_identity_A + loss_identity_B).item():.4f} "
             f"loss_G_GAN: {(loss_GAN_A2B + loss_GAN_B2A).item():.4f} "
             f"loss_G_cycle: {(loss_cycle_ABA + loss_cycle_BAB).item():.4f}")
+
+        # W&B integration
+        wandb.log({
+            "Loss_D": (errD_A + errD_B).item(),
+            "Loss_G": errG.item(),
+            "loss_G_GAN": (loss_GAN_A2B + loss_GAN_B2A).item(),
+            "loss_G_cycle": (loss_cycle_ABA + loss_cycle_BAB).item(),
+        })
+
+        wandb.watch(netG_A2B)
+        wandb.watch(netG_B2A)
+        wandb.watch(netD_A)
+        wandb.watch(netD_B)
 
         if i % args.print_freq == 0:
             vutils.save_image(real_image_A,
