@@ -28,8 +28,9 @@ def arguments_parsing():
     Define arguments for the training process.
     """
     parser = argparse.ArgumentParser(
-        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks`")
-    parser.add_argument("--dataroot", type=str, default=".",
+        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial "
+                    "Networks`")
+    parser.add_argument("--dataroot", type=str, default="..",
                         help="path to datasets. (default:./data)")
     parser.add_argument("--epochs", default=200, type=int, metavar="N",
                         help="number of total epochs to run")
@@ -66,7 +67,6 @@ def arguments_parsing():
 
 
 def init_weights_and_biases(args):
-    wandb.login(key="24244c351814b9bc7a521d64765acc25852118c3")
     wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
     wandb.config = {
         "learning_rate": args.lr,
