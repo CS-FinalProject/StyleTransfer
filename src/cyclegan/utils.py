@@ -12,10 +12,15 @@
 # limitations under the License.
 # ==============================================================================
 import random
-
+import os
 import torch
 
 IMAGE_SIZE = 64
+
+GEN_A2B_PATH = os.path.join("models", "genA2B")
+GEN_B2A_PATH = os.path.join("models", "genB2A")
+DISC_A_PATH = os.path.join("models", "discA")
+DISC_B_PATH = os.path.join("models", "discB")
 
 class ReplayBuffer:
     def __init__(self, max_size=50):

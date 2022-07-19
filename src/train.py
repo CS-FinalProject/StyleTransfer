@@ -1,18 +1,4 @@
-# Copyright 2020 Lorna Authors. All Rights Reserved.
-# Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 import argparse
-import itertools
 import os
 import random
 import wandb
@@ -21,306 +7,336 @@ import torch.backends.cudnn as cudnn
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+import torch.nn as nn
 from PIL import Image
 from tqdm import tqdm
 
-from cyclegan_pytorch import DecayLR
-from cyclegan_pytorch import Discriminator
-from cyclegan_pytorch import Generator
-from cyclegan_pytorch import ImageDataset
-from cyclegan_pytorch import ReplayBuffer
-from cyclegan_pytorch import weights_init
+from cyclegan import DecayLR
+from cyclegan import Discriminator
+from cyclegan import Generator
+from cyclegan import ImageDataset
+from cyclegan import ReplayBuffer
+from cyclegan import weights_init
+from cyclegan import GEN_A2B_PATH, GEN_B2A_PATH, DISC_A_PATH, DISC_B_PATH
 
-wandb.login(key="24244c351814b9bc7a521d64765acc25852118c3")
+# W&B initialization
 wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
 
-parser = argparse.ArgumentParser(
-    description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks`")
-parser.add_argument("--dataroot", type=str, default="./data",
-                    help="path to datasets. (default:./data)")
-parser.add_argument("--dataset", type=str, default="horse2zebra",
-                    help="dataset name. (default:`horse2zebra`)"
-                         "Option: [apple2orange, summer2winter_yosemite, horse2zebra, monet2photo, "
-                         "cezanne2photo, ukiyoe2photo, vangogh2photo, maps, facades, selfie2anime, "
-                         "iphone2dslr_flower, ae_photos, ]")
-parser.add_argument("--epochs", default=200, type=int, metavar="N",
-                    help="number of total epochs to run")
-parser.add_argument("--decay_epochs", type=int, default=100,
-                    help="epoch to start linearly decaying the learning rate to 0. (default:100)")
-parser.add_argument("-b", "--batch-size", default=1, type=int,
-                    metavar="N",
-                    help="mini-batch size (default: 1), this is the total "
-                         "batch size of all GPUs on the current node when "
-                         "using Data Parallel or Distributed Data Parallel")
-parser.add_argument("--lr", type=float, default=0.0002,
-                    help="learning rate. (default:0.0002)")
-parser.add_argument("-p", "--print-freq", default=100, type=int,
-                    metavar="N", help="print frequency. (default:100)")
-parser.add_argument("--cuda", action="store_true", help="Enables cuda")
-parser.add_argument("--netG_A2B", default="", help="path to netG_A2B (to continue training)")
-parser.add_argument("--netG_B2A", default="", help="path to netG_B2A (to continue training)")
-parser.add_argument("--netD_A", default="", help="path to netD_A (to continue training)")
-parser.add_argument("--netD_B", default="", help="path to netD_B (to continue training)")
-parser.add_argument("--image-size", type=int, default=256,
-                    help="size of the data crop (squared assumed). (default:256)")
-parser.add_argument("--outf", default="./outputs",
-                    help="folder to output images. (default:`./outputs`).")
-parser.add_argument("--manualSeed", type=int,
-                    help="Seed for initializing training. (default:none)")
 
-args = parser.parse_args()
-print(args)
+def arguments_parsing():
+    """
+    Define arguments for the training process.
+    """
+    parser = argparse.ArgumentParser(
+        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks`")
+    parser.add_argument("--dataroot", type=str, default=".",
+                        help="path to datasets. (default:./data)")
+    parser.add_argument("--epochs", default=200, type=int, metavar="N",
+                        help="number of total epochs to run")
+    parser.add_argument("--decay_epochs", type=int, default=100,
+                        help="epoch to start linearly decaying the learning rate to 0. (default:100)")
+    parser.add_argument("-b", "--batch-size", default=1, type=int,
+                        metavar="N",
+                        help="mini-batch size (default: 1), this is the total "
+                             "batch size of all GPUs on the current node when "
+                             "using Data Parallel or Distributed Data Parallel")
+    parser.add_argument("--lr", type=float, default=0.0002,
+                        help="learning rate. (default:0.0002)")
+    parser.add_argument("--cuda", action="store_true", help="Enables cuda")
+    parser.add_argument("--continue-training", type=bool, default=False,
+                        help="If this flag is true, then the training will resume from the last checkpoint")
+    parser.add_argument("--image-size", type=int, default=256,
+                        help="size of the data crop (squared assumed). (default:256)")
+    parser.add_argument("--outf", default="./outputs",
+                        help="folder to output images. (default:`./outputs`).")
+    parser.add_argument("--manualSeed", type=int,
+                        help="Seed for initializing training. (default:none)")
+    parser.add_argument("--save_model_freq", default=20, help="The program will save the model each N batches",
+                        type=int)
 
-wandb.config = {
-  "learning_rate": args.lr,
-  "epochs": args.epochs,
-  "batch_size": args.batch_size
-}
+    args = parser.parse_args()
 
-try:
-    os.makedirs(args.outf)
-except OSError:
-    pass
+    if args.manualSeed is None:
+        args.manualSeed = random.randint(1, 10000)
+    print("Random Seed: ", args.manualSeed)
+    random.seed(args.manualSeed)
+    torch.manual_seed(args.manualSeed)
 
-try:
-    os.makedirs("weights")
-except OSError:
-    pass
+    return args
 
-if args.manualSeed is None:
-    args.manualSeed = random.randint(1, 10000)
-print("Random Seed: ", args.manualSeed)
-random.seed(args.manualSeed)
-torch.manual_seed(args.manualSeed)
 
-cudnn.benchmark = True
+def init_weights_and_biases(args):
+    wandb.login(key="24244c351814b9bc7a521d64765acc25852118c3")
+    wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
+    wandb.config = {
+        "learning_rate": args.lr,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size
+    }
 
-if torch.cuda.is_available() and not args.cuda:
-    print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-# Dataset
-dataset = ImageDataset(root=os.path.join(args.dataroot, args.dataset),
-                       transform=transforms.Compose([
-                           transforms.Resize(int(args.image_size * 1.12), Image.BICUBIC),
-                           transforms.RandomCrop(args.image_size),
-                           transforms.RandomHorizontalFlip(),
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
-                       unaligned=True)
+def init_folders(args) -> None:
+    """
+    Initialize folders for saving the outputs.
+    """
+    # Make output folder for output images
+    if not os.path.exists(args.outf):
+        os.makedirs(args.outf)
+    if not os.path.exists("models"):
+        os.makedirs("models")
+    if not os.path.exists(GEN_A2B_PATH):
+        os.makedirs(GEN_A2B_PATH)
+    if not os.path.exists(GEN_B2A_PATH):
+        os.makedirs(GEN_B2A_PATH)
+    if not os.path.exists(DISC_A_PATH):
+        os.makedirs(DISC_A_PATH)
+    if not os.path.exists(DISC_B_PATH):
+        os.makedirs(DISC_B_PATH)
+    if not os.path.exists(os.path.join("outputs", "A")):
+        os.makedirs(os.path.join("outputs", "A"))
+    if not os.path.exists(os.path.join("outputs", "B")):
+        os.makedirs(os.path.join("outputs", "B"))
 
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
 
-try:
-    os.makedirs(os.path.join(args.outf, args.dataset, "A"))
-    os.makedirs(os.path.join(args.outf, args.dataset, "B"))
-except OSError:
-    pass
+def init_models_counting(dir_path: str) -> int:
+    """
+    Gets the latest model count in the folder.
+    :param dir_path: The path to all models of the model type.
+    :return: The latest count
+    """
+    models = os.listdir(dir_path)
+    models.sort()
 
-try:
-    os.makedirs(os.path.join("weights", args.dataset))
-except OSError:
-    pass
+    if len(models) == 0:
+        return -1
+    file = models[-1]
+    if file.endswith(".pth"):
+        return int(file.split(".")[0])
+    else:
+        return -1
 
-device = torch.device("cuda:0" if args.cuda else "cpu")
 
-# create model
-netG_A2B = Generator().to(device)
-netG_B2A = Generator().to(device)
-netD_A = Discriminator().to(device)
-netD_B = Discriminator().to(device)
+def init_dataset(args) -> torch.utils.data.DataLoader:
+    dataset = ImageDataset(root=os.path.join(args.dataroot, "dataset"),
+                           transform=transforms.Compose([
+                               transforms.Resize(int(args.image_size * 1.12)),
+                               transforms.RandomCrop(args.image_size),
+                               transforms.RandomHorizontalFlip(),
+                               transforms.ToTensor(),
+                               transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+                           mode="train",
+                           unaligned=True)
 
-netG_A2B.apply(weights_init)
-netG_B2A.apply(weights_init)
-netD_A.apply(weights_init)
-netD_B.apply(weights_init)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    return dataloader
 
-if args.netG_A2B != "":
-    netG_A2B.load_state_dict(torch.load(args.netG_A2B))
-if args.netG_B2A != "":
-    netG_B2A.load_state_dict(torch.load(args.netG_B2A))
-if args.netD_A != "":
-    netD_A.load_state_dict(torch.load(args.netD_A))
-if args.netD_B != "":
-    netD_B.load_state_dict(torch.load(args.netD_B))
 
-# define loss function (adversarial_loss) and optimizer
-cycle_loss = torch.nn.L1Loss().to(device)
-identity_loss = torch.nn.L1Loss().to(device)
-adversarial_loss = torch.nn.MSELoss().to(device)
+def init_models(args, device, counters: dict) -> tuple:
+    generator_A2B = Generator().to(device)
+    generator_B2A = Generator().to(device)
+    discriminator_A = Discriminator().to(device)
+    discriminator_B = Discriminator().to(device)
 
-# Optimizers
-optimizer_G = torch.optim.Adam(itertools.chain(netG_A2B.parameters(), netG_B2A.parameters()),
-                               lr=args.lr, betas=(0.5, 0.999))
-optimizer_D_A = torch.optim.Adam(netD_A.parameters(), lr=args.lr, betas=(0.5, 0.999))
-optimizer_D_B = torch.optim.Adam(netD_B.parameters(), lr=args.lr, betas=(0.5, 0.999))
+    # Load the latest models if we want to continue learning
+    if args.continue_training and len(os.listdir(GEN_A2B_PATH)) > 0:
+        generator_A2B.load_state_dict(torch.load(os.path.join(GEN_A2B_PATH, str(counters["genA2B"]) + ".pth")))
+        generator_B2A.load_state_dict(torch.load(os.path.join(GEN_B2A_PATH, str(counters["genB2A"]) + ".pth")))
+        discriminator_A.load_state_dict(torch.load(os.path.join(DISC_A_PATH, str(counters["discA"]) + ".pth")))
+        discriminator_B.load_state_dict(torch.load(os.path.join(DISC_B_PATH, str(counters["discB"]) + ".pth")))
+    else:
+        generator_A2B.apply(weights_init)
+        generator_B2A.apply(weights_init)
+        discriminator_A.apply(weights_init)
+        discriminator_B.apply(weights_init)
 
-lr_lambda = DecayLR(args.epochs, 0, args.decay_epochs).step
-lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(optimizer_G, lr_lambda=lr_lambda)
-lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=lr_lambda)
-lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=lr_lambda)
+    generator_A2B.train()
+    generator_B2A.train()
+    discriminator_A.train()
+    discriminator_B.train()
 
-g_losses = []
-d_losses = []
+    return generator_A2B, generator_B2A, discriminator_A, discriminator_B
 
-identity_losses = []
-gan_losses = []
-cycle_losses = []
 
-fake_A_buffer = ReplayBuffer()
-fake_B_buffer = ReplayBuffer()
+def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx: int, generator_A2B: Generator,
+                       generator_B2A: Generator,
+                       discriminator_A: Discriminator, discriminator_B: Discriminator, counters: dict):
+    if batch_idx % args.save_model_freq != 0:
+        return
 
-for epoch in range(0, args.epochs):
-    progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
-    for i, data in progress_bar:
-        # get batch size data
-        real_image_A = data["A"].to(device)
-        real_image_B = data["B"].to(device)
-        batch_size = real_image_A.size(0)
+    for model in counters:
+        counters[model] += 1
 
-        # real data label is 1, fake data label is 0.
-        real_label = torch.full((batch_size, 1), 1, device=device, dtype=torch.float32)
-        fake_label = torch.full((batch_size, 1), 0, device=device, dtype=torch.float32)
+    # Saving the current trained models
+    torch.save(generator_A2B.state_dict(), os.path.join(GEN_A2B_PATH, str(counters["genA2B"]) + ".pth"))
+    torch.save(generator_B2A.state_dict(), os.path.join(GEN_B2A_PATH, str(counters["genB2A"]) + ".pth"))
+    torch.save(discriminator_A.state_dict(), os.path.join(DISC_A_PATH, str(counters["discA"]) + ".pth"))
+    torch.save(discriminator_B.state_dict(), os.path.join(DISC_B_PATH, str(counters["discB"]) + ".pth"))
 
-        ##############################################
-        # (1) Update G network: Generators A2B and B2A
-        ##############################################
+    # Save images generated by the latest models
+    fake_image_B = generator_A2B(real_imageA)
+    fake_image_A = generator_B2A(real_imageB)
 
-        # Set G_A and G_B's gradients to zero
-        optimizer_G.zero_grad()
+    vutils.save_image(real_imageA,
+                      os.path.join(args.outf, "A", "real_epoch_{}_batch_{}.png".format(epoch_idx, batch_idx)),
+                      normalize=True)
+    vutils.save_image(fake_image_B,
+                      os.path.join(args.outf, "B", "fake_epoch_{}_batch_{}.png".format(epoch_idx, batch_idx)),
+                      normalize=True)
 
-        # Identity loss
-        # G_B2A(A) should equal A if real A is fed
-        identity_image_A = netG_B2A(real_image_A)
-        loss_identity_A = identity_loss(identity_image_A, real_image_A) * 5.0
-        # G_A2B(B) should equal B if real B is fed
-        identity_image_B = netG_A2B(real_image_B)
-        loss_identity_B = identity_loss(identity_image_B, real_image_B) * 5.0
+    vutils.save_image(real_imageB,
+                      os.path.join(args.outf, "B", "real_epoch_{}_batch_{}.png".format(epoch_idx, batch_idx)),
+                      normalize=True)
+    vutils.save_image(fake_image_A,
+                      os.path.join(args.outf, "A", "fake_epoch_{}_batch_{}.png".format(epoch_idx, batch_idx)),
+                      normalize=True)
 
-        # GAN loss
-        # GAN loss D_A(G_A(A))
-        fake_image_A = netG_B2A(real_image_B)
-        fake_output_A = netD_A(fake_image_A)
-        loss_GAN_B2A = adversarial_loss(fake_output_A, real_label)
-        # GAN loss D_B(G_B(B))
-        fake_image_B = netG_A2B(real_image_A)
-        fake_output_B = netD_B(fake_image_B)
-        loss_GAN_A2B = adversarial_loss(fake_output_B, real_label)
+    # Uploading to W&B
+    real_imageA = wandb.Image(real_imageA, caption="real_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
+    wandb.log({"A Images": real_imageA})
+    fake_image_B = wandb.Image(fake_image_B, caption="fake_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
+    wandb.log({"B Images": fake_image_B})
 
-        # Cycle loss
-        recovered_image_A = netG_B2A(fake_image_B)
-        loss_cycle_ABA = cycle_loss(recovered_image_A, real_image_A) * 10.0
+    real_imageB = wandb.Image(real_imageB, caption="real_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
+    wandb.log({"B Images": real_imageB})
+    fake_image_A = wandb.Image(fake_image_A, caption="fake_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
+    wandb.log({"A Images": fake_image_A})
 
-        recovered_image_B = netG_A2B(fake_image_A)
-        loss_cycle_BAB = cycle_loss(recovered_image_B, real_image_B) * 10.0
 
-        # Combined loss and calculate gradients
-        errG = loss_identity_A + loss_identity_B + loss_GAN_A2B + loss_GAN_B2A + loss_cycle_ABA + loss_cycle_BAB
+def train(args, device):
+    dataloader = init_dataset(args)
 
-        # Calculate gradients for G_A and G_B
-        errG.backward()
-        # Update G_A and G_B's weights
-        optimizer_G.step()
+    counters = {
+        "genA2B": init_models_counting(GEN_A2B_PATH),
+        "genB2A": init_models_counting(GEN_B2A_PATH),
+        "discA": init_models_counting(DISC_A_PATH),
+        "discB": init_models_counting(DISC_B_PATH),
+    }
 
-        ##############################################
-        # (2) Update D network: Discriminator A
-        ##############################################
+    # Fetch all generators and discriminators
+    generator_A2B, generator_B2A, discriminator_A, discriminator_B = init_models(args, device, counters)
 
-        # Set D_A gradients to zero
-        optimizer_D_A.zero_grad()
+    # Define loss functions
+    loss_func_adversarial = nn.MSELoss()
+    loss_func_cycle_gan = nn.MSELoss()
+    loss_func_identity_loss = nn.L1Loss()
 
-        # Real A image loss
-        real_output_A = netD_A(real_image_A)
-        errD_real_A = adversarial_loss(real_output_A, real_label)
+    # Define optimizers
+    genA2B_optim = torch.optim.Adam(generator_A2B.parameters(), lr=args.lr)
+    genB2A_optim = torch.optim.Adam(generator_B2A.parameters(), lr=args.lr)
+    discA_optim = torch.optim.Adam(discriminator_A.parameters(), lr=args.lr)
+    discB_optim = torch.optim.Adam(discriminator_B.parameters(), lr=args.lr)
+    optimizers = [genA2B_optim, genB2A_optim, discA_optim, discB_optim]
 
-        # Fake A image loss
-        fake_image_A = fake_A_buffer.push_and_pop(fake_image_A)
-        fake_output_A = netD_A(fake_image_A.detach())
-        errD_fake_A = adversarial_loss(fake_output_A, fake_label)
+    # Define losses
+    genB2A_losses = {"cycle_loss": [], "adversarial_loss": []}
+    genA2B_losses = {"cycle_loss": [], "adversarial_loss": []}
+    discA_losses = {"identity_loss": []}
+    discB_losses = {"identity_loss": []}
 
-        # Combined loss and calculate gradients
-        errD_A = (errD_real_A + errD_fake_A) / 2
+    lr_lambda = DecayLR(args.epochs, 0, args.decay_epochs).step
+    lr_scheduler_genA2B = torch.optim.lr_scheduler.LambdaLR(genA2B_optim, lr_lambda=lr_lambda)
+    lr_scheduler_genB2A = torch.optim.lr_scheduler.LambdaLR(genB2A_optim, lr_lambda=lr_lambda)
+    lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(discA_optim, lr_lambda=lr_lambda)
+    lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(discB_optim, lr_lambda=lr_lambda)
 
-        # Calculate gradients for D_A
-        errD_A.backward()
-        # Update D_A weights
-        optimizer_D_A.step()
+    def adversarial_loss(x, y, discriminator: Discriminator, generator: Generator, losses: dict):
+        adv_loss = loss_func_adversarial(discriminator(x), discriminator(generator(y)))
+        losses["adversarial_loss"].append(adv_loss.item())
+        return adv_loss
 
-        ##############################################
-        # (3) Update D network: Discriminator B
-        ##############################################
+    def cycle_loss(x, y, generator: Generator, inverse_generator: Generator, losses: dict):
+        cyc_loss = loss_func_cycle_gan(inverse_generator(generator(x)), x) + \
+                   loss_func_cycle_gan(generator(inverse_generator(y)), y)
 
-        # Set D_B gradients to zero
-        optimizer_D_B.zero_grad()
+        losses["cycle_loss"].append(cyc_loss.item())
+        return cyc_loss
 
-        # Real B image loss
-        real_output_B = netD_B(real_image_B)
-        errD_real_B = adversarial_loss(real_output_B, real_label)
+    def update_discriminator(discriminator: Discriminator, generator: Generator, disc_optimizer, image, losses: dict):
+        generator.eval()
+        discriminator.train()
 
-        # Fake B image loss
-        fake_image_B = fake_B_buffer.push_and_pop(fake_image_B)
-        fake_output_B = netD_B(fake_image_B.detach())
-        errD_fake_B = adversarial_loss(fake_output_B, fake_label)
+        disc_optimizer.zero_grad()
+        disc_output = discriminator(image)
+        err = loss_func_identity_loss(disc_output, torch.full(disc_output.size(), 1, device=device))
+        err.backward()
 
-        # Combined loss and calculate gradients
-        errD_B = (errD_real_B + errD_fake_B) / 2
+        inverse_err = loss_func_identity_loss(discriminator(generator(image)),
+                                              torch.full(disc_output.size(), 0, device=device))
+        inverse_err.backward()
 
-        # Calculate gradients for D_B
-        errD_B.backward()
-        # Update D_B weights
-        optimizer_D_B.step()
+        losses["identity_loss"].append(err.item() + inverse_err.item())
 
-        progress_bar.set_description(
-            f"[{epoch}/{args.epochs - 1}][{i}/{len(dataloader) - 1}] "
-            f"Loss_D: {(errD_A + errD_B).item():.4f} "
-            f"Loss_G: {errG.item():.4f} "
-            f"Loss_G_identity: {(loss_identity_A + loss_identity_B).item():.4f} "
-            f"loss_G_GAN: {(loss_GAN_A2B + loss_GAN_B2A).item():.4f} "
-            f"loss_G_cycle: {(loss_cycle_ABA + loss_cycle_BAB).item():.4f}")
+        disc_optimizer.step()
 
-        # W&B integration
-        wandb.log({
-            "Loss_D": (errD_A + errD_B).item(),
-            "Loss_G": errG.item(),
-            "loss_G_GAN": (loss_GAN_A2B + loss_GAN_B2A).item(),
-            "loss_G_cycle": (loss_cycle_ABA + loss_cycle_BAB).item(),
-        })
+        generator.train()
 
-        wandb.watch(netG_A2B)
-        wandb.watch(netG_B2A)
-        wandb.watch(netD_A)
-        wandb.watch(netD_B)
+    for epoch_idx in range(args.epochs):
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc="Epoch {}".format(epoch_idx))):
+            image_A, image_B = batch["A"], batch["B"]
+            image_A = image_A.to(device)
+            image_B = image_B.to(device)
 
-        if i % args.print_freq == 0:
-            vutils.save_image(real_image_A,
-                              f"{args.outf}/{args.dataset}/A/real_samples_epoch_{epoch}_{i}.png",
-                              normalize=True)
-            vutils.save_image(real_image_B,
-                              f"{args.outf}/{args.dataset}/B/real_samples_epoch_{epoch}_{i}.png",
-                              normalize=True)
+            for optimizer in optimizers:
+                optimizer.zero_grad()
 
-            fake_image_A = 0.5 * (netG_B2A(real_image_B).data + 1.0)
-            fake_image_B = 0.5 * (netG_A2B(real_image_A).data + 1.0)
+            #########################################################
+            # Update the generators with CycleGAN and Adversarial   #
+            #########################################################
 
-            vutils.save_image(fake_image_A.detach(),
-                              f"{args.outf}/{args.dataset}/A/fake_samples_epoch_{epoch}_{i}.png",
-                              normalize=True)
-            vutils.save_image(fake_image_B.detach(),
-                              f"{args.outf}/{args.dataset}/B/fake_samples_epoch_{epoch}_{i}.png",
-                              normalize=True)
+            # We don't want to update the discriminators' weights during the generators update
+            discriminator_A.eval()
+            discriminator_B.eval()
 
-    # do check pointing
-    torch.save(netG_A2B.state_dict(), f"weights/{args.dataset}/netG_A2B_epoch_{epoch}.pth")
-    torch.save(netG_B2A.state_dict(), f"weights/{args.dataset}/netG_B2A_epoch_{epoch}.pth")
-    torch.save(netD_A.state_dict(), f"weights/{args.dataset}/netD_A_epoch_{epoch}.pth")
-    torch.save(netD_B.state_dict(), f"weights/{args.dataset}/netD_B_epoch_{epoch}.pth")
+            # Adversarial Loss
+            adversarial_loss_A = adversarial_loss(image_A, image_B, discriminator_A, generator_B2A, genB2A_losses)
+            adversarial_loss_B = adversarial_loss(image_B, image_A, discriminator_B, generator_A2B, genA2B_losses)
 
-    # Update learning rates
-    lr_scheduler_G.step()
-    lr_scheduler_D_A.step()
-    lr_scheduler_D_B.step()
+            # Cycle GAN loss
+            cycle_loss_A = cycle_loss(image_A, image_B, generator_A2B, generator_B2A, genA2B_losses)  # A -> B
+            cycle_loss_B = cycle_loss(image_B, image_A, generator_B2A, generator_A2B, genB2A_losses)  # B -> A
 
-# save last check pointing
-torch.save(netG_A2B.state_dict(), f"weights/{args.dataset}/netG_A2B.pth")
-torch.save(netG_B2A.state_dict(), f"weights/{args.dataset}/netG_B2A.pth")
-torch.save(netD_A.state_dict(), f"weights/{args.dataset}/netD_A.pth")
-torch.save(netD_B.state_dict(), f"weights/{args.dataset}/netD_B.pth")
+            total_error = adversarial_loss_A + adversarial_loss_B + cycle_loss_A + cycle_loss_B
+            total_error.backward()
+
+            genA2B_optim.step()
+            genB2A_optim.step()
+
+            #####################################################
+            # Update the discriminators using Identity loss     #
+            #####################################################
+
+            # Discriminator A
+            update_discriminator(discriminator_A, generator_B2A, discA_optim, image_A, discA_losses)
+            # Discriminator B
+            update_discriminator(discriminator_B, generator_A2B, discB_optim, image_B, discB_losses)
+
+            # Handle saving of models and output images
+            models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, generator_A2B, generator_B2A,
+                               discriminator_A, discriminator_B, counters)
+
+            # Update learning rates
+            lr_scheduler_genA2B.step()
+            lr_scheduler_genB2A.step()
+            lr_scheduler_D_A.step()
+            lr_scheduler_D_B.step()
+
+
+def main():
+    args_parser = arguments_parsing()
+
+    # Initialize a bunch of things
+    init_weights_and_biases(args_parser)
+    init_folders(args_parser)
+
+    cudnn.benchmark = True
+
+    if torch.cuda.is_available() and not args_parser.cuda:
+        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    device = torch.device("cuda:0" if args_parser.cuda and torch.cuda.is_available() else "cpu")
+
+    train(args_parser, device)
+    wandb.finish()
+
+
+if __name__ == '__main__':
+    main()
