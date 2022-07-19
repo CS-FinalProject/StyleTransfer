@@ -2,7 +2,7 @@
 
 URL=https://people.eecs.berkeley.edu/~taesung_park/CycleGAN/datasets/monet2photo.zip
 ZIP_FILE=monet2photo.zip
-TARGET_DIR=dataset
+TARGET_DIR=monet2photo
 wget ${URL}
 unzip ${ZIP_FILE}
 rm ${ZIP_FILE}
