@@ -192,14 +192,14 @@ def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx
 
     # Uploading to W&B
     real_imageA = wandb.Image(real_imageA, caption="real_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
-    wandb.log({"A Images": real_imageA})
+    wandb.log({"A Real Images": real_imageA})
     fake_image_B = wandb.Image(fake_image_B, caption="fake_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
-    wandb.log({"B Images": fake_image_B})
+    wandb.log({"B Fake Images": fake_image_B})
 
     real_imageB = wandb.Image(real_imageB, caption="real_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
-    wandb.log({"B Images": real_imageB})
+    wandb.log({"B Real Images": real_imageB})
     fake_image_A = wandb.Image(fake_image_A, caption="fake_epoch_{}_batch_{}".format(epoch_idx, batch_idx))
-    wandb.log({"A Images": fake_image_A})
+    wandb.log({"A Fake Images": fake_image_A})
 
 
 def train(args, device):
@@ -265,13 +265,16 @@ def train(args, device):
         inverse_err.backward()
 
         losses["identity_loss"].append(err.item() + inverse_err.item())
-
         disc_optimizer.step()
 
         generator.train()
+        return err + inverse_err
 
     for epoch_idx in range(args.epochs):
-        for batch_idx, batch in enumerate(tqdm(dataloader, desc="Epoch {}".format(epoch_idx))):
+        progress_bar = tqdm(dataloader, desc="Epoch {}".format(epoch_idx))
+        for batch_idx, batch in enumerate(progress_bar):
+            progress_bar.set_description(
+                "Epoch ({}/{}) Batch ({}/{})".format(epoch_idx, args.epochs, batch_idx, len(dataloader)))
             image_A, image_B = batch["A"], batch["B"]
             image_A = image_A.to(device)
             image_B = image_B.to(device)
@@ -301,14 +304,30 @@ def train(args, device):
             genA2B_optim.step()
             genB2A_optim.step()
 
+            # Log in W&B
+            wandb.log({"Generator A2B Loss": cycle_loss_A + adversarial_loss_B,
+                       "Generator B2A Loss": cycle_loss_B + adversarial_loss_A})
+
             #####################################################
             # Update the discriminators using Identity loss     #
             #####################################################
 
             # Discriminator A
-            update_discriminator(discriminator_A, generator_B2A, discA_optim, image_A, discA_losses)
+            discA_loss = update_discriminator(discriminator_A, generator_B2A, discA_optim, image_A, discA_losses)
             # Discriminator B
-            update_discriminator(discriminator_B, generator_A2B, discB_optim, image_B, discB_losses)
+            discB_loss = update_discriminator(discriminator_B, generator_A2B, discB_optim, image_B, discB_losses)
+
+            wandb.log({"Discriminator A Loss": discA_loss,
+                       "Discriminator B Loss": discB_loss})
+
+            #####################################################
+            # Update the learning rates                          #
+            #####################################################
+
+            lr_scheduler_genA2B.step()
+            lr_scheduler_genB2A.step()
+            lr_scheduler_D_A.step()
+            lr_scheduler_D_B.step()
 
             # Handle saving of models and output images
             models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, generator_A2B, generator_B2A,
