@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2022-07-21T12:13:26.122Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36" etag="FgjDfoyVJyAYXPNSC68i" version="18.0.4" type="github">
+<mxfile host="app.diagrams.net" modified="2022-07-21T12:14:13.083Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36" etag="7YIDOjicmq7lCIG9CbQI" version="18.0.4" type="github">
   <diagram id="P69tAXFs2tNeaM_hII8h" name="Page-1">
-    <mxGraphModel dx="2415" dy="909" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2756" dy="1104" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -28,20 +28,20 @@
             <mxPoint x="490" y="1360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="ApgkvsSMv7f6DMbq_zhc-15" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Loads into new page&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=50;" vertex="1" parent="1">
-          <mxGeometry x="210" y="1270" width="200" height="80" as="geometry" />
+        <mxCell id="ApgkvsSMv7f6DMbq_zhc-15" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Loads into new page with loading circle&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=50;" vertex="1" parent="1">
+          <mxGeometry x="130" y="1270" width="360" height="80" as="geometry" />
         </mxCell>
         <mxCell id="ApgkvsSMv7f6DMbq_zhc-16" value="New image" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="750" y="1030" width="230" height="230" as="geometry" />
         </mxCell>
         <mxCell id="ApgkvsSMv7f6DMbq_zhc-17" value="Save" style="labelPosition=center;verticalLabelPosition=middle;align=center;html=1;shape=mxgraph.basic.shaded_button;dx=10;fillColor=#E6E6E6;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="670" y="1360" width="145" height="60" as="geometry" />
+          <mxGeometry x="670" y="1410" width="145" height="60" as="geometry" />
         </mxCell>
         <mxCell id="ApgkvsSMv7f6DMbq_zhc-18" value="Share" style="labelPosition=center;verticalLabelPosition=middle;align=center;html=1;shape=mxgraph.basic.shaded_button;dx=10;fillColor=#E6E6E6;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="670" y="1450" width="145" height="60" as="geometry" />
+          <mxGeometry x="670" y="1500" width="145" height="60" as="geometry" />
         </mxCell>
         <mxCell id="ApgkvsSMv7f6DMbq_zhc-24" value="Upload another" style="labelPosition=center;verticalLabelPosition=middle;align=center;html=1;shape=mxgraph.basic.shaded_button;dx=10;fillColor=#E6E6E6;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="670" y="1540" width="145" height="60" as="geometry" />
+          <mxGeometry x="670" y="1600" width="145" height="60" as="geometry" />
         </mxCell>
         <mxCell id="ApgkvsSMv7f6DMbq_zhc-25" value="Old Image" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="520" y="1030" width="230" height="230" as="geometry" />
