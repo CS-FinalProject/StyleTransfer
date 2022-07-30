@@ -122,8 +122,8 @@ class CycleGAN(BaseModel):
 
     def step_lr_schedulers(self):
         self.genA2B_lr_scheduler.step()
-        self.genB2A_lr_scheduler_lr_scheduler.step()
-        self.discA_lr_scheduler_lr_scheduler.step()
+        self.genB2A_lr_scheduler.step()
+        self.discA_lr_scheduler.step()
         self.discB_lr_scheduler.step()
 
     def train_model(self, real_imageA: torch.Tensor, real_imageB: torch.Tensor) -> dict:
