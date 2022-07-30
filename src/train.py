@@ -42,7 +42,7 @@ def arguments_parsing():
                         help="If this flag is true, then the training will resume from the last checkpoint")
     parser.add_argument("--image-size", type=int, default=256,
                         help="size of the data crop (squared assumed). (default:256)")
-    parser.add_argument("--outf", default="./outputs",
+    parser.add_argument("--outf", default="../outputs",
                         help="folder to output images. (default:`./outputs`).")
     parser.add_argument("--manualSeed", type=int,
                         help="Seed for initializing training. (default:none)")

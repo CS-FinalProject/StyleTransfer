@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch
 from os import path
 
-from src.cyclegan.utils import *
+from cyclegan.utils import *
 
 from .generator import Generator
 from .discriminator import Discriminator
@@ -87,7 +87,9 @@ class CycleGAN(BaseModel):
         """
         fake = generator(real)
         disc_prediction = discriminator(fake)
-        disc_loss = self.adversarial_loss_func(disc_prediction, torch.full(disc_prediction.shape, 1, device=self.device).to(torch.float32))
+        disc_loss = self.adversarial_loss_func(disc_prediction,
+                                               torch.full(disc_prediction.shape, 1, device=self.device).to(
+                                                   torch.float32))
         disc_loss.backward()
 
         optimizer.step()
