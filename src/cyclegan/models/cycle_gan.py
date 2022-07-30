@@ -19,10 +19,10 @@ class CycleGAN(BaseModel):
         self.device = device
 
         # Define the generators and discriminators
-        self.generator_A2B = Generator()
-        self.generator_B2A = Generator()
-        self.discriminator_A = Discriminator()
-        self.discriminator_B = Discriminator()
+        self.generator_A2B = Generator().to(device)
+        self.generator_B2A = Generator().to(device)
+        self.discriminator_A = Discriminator().to(device)
+        self.discriminator_B = Discriminator().to(device)
 
         self.init_models(continue_learning, counters)
 
@@ -66,9 +66,10 @@ class CycleGAN(BaseModel):
         :return: Loss value
         """
         # Real
-        real_pred = discriminator(real_image)
+        real_pred = discriminator(real_image).to(self.device)
         loss_real = self.identity_loss_func(real_pred, torch.full(real_pred.shape, 1).to(torch.float32))
         # Fake
+        fake_image = fake_image.to(self.device)
         fake_pred = discriminator(fake_image)
         loss_fake = self.identity_loss_func(fake_pred, torch.full(real_pred.shape, 0).to(torch.float32))
 
@@ -85,7 +86,7 @@ class CycleGAN(BaseModel):
         input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
-        fake = generator(real)
+        fake = generator(real).to(self.device)
         disc_prediction = discriminator(fake)
         disc_loss = self.adversarial_loss_func(disc_prediction,
                                                torch.full(disc_prediction.shape, 1, device=self.device).to(
@@ -97,8 +98,8 @@ class CycleGAN(BaseModel):
 
     def forward_cycle_loss(self, generator: Generator, inv_generator: Generator, optimizer,
                            real: torch.Tensor) -> torch.Tensor:
-        fake_image = generator(real)
-        converted_back = inv_generator(fake_image)
+        fake_image = generator(real).to(self.device)
+        converted_back = inv_generator(fake_image).to(self.device)
         loss = self.cycle_loss_func(converted_back, real)
         loss.backward()
 
