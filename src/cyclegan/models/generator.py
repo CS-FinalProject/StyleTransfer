@@ -5,6 +5,24 @@ from collections import deque
 from .base_model import BaseModel
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_features):
+        super().__init__()
+
+        self.block = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_features, in_features, 3),
+            nn.InstanceNorm2d(in_features),
+            nn.ReLU(inplace=True),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_features, in_features, 3),
+            nn.InstanceNorm2d(in_features),
+        )
+
+    def forward(self, x):
+        return x + self.block(x)
+
+
 class Generator(BaseModel):
     """
     The generator inputs a random noise Z, and generates an image based on Z.
@@ -15,7 +33,7 @@ class Generator(BaseModel):
         - An image that is generated from Z.
     """
 
-    def __init__(self, z_dim: int = 3):
+    def __init__(self, feature_num: int = 64, z_dim: int = 3):
         super().__init__()
 
         # We keep the last image generated to calculate losses
@@ -23,31 +41,38 @@ class Generator(BaseModel):
         self.last_generated.append(torch.full((256, 256), 1))
 
         self.layers = nn.Sequential(
-            # Input of network is a random z
-            nn.Conv2d(in_channels=z_dim, out_channels=64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(in_channels=3, out_channels=feature_num, kernel_size=7, stride=1, padding=0),
+            nn.BatchNorm2d(num_features=feature_num),
             nn.ReLU(True),
 
-            nn.Conv2d(in_channels=64, out_channels=96, kernel_size=3, padding=1),
-            nn.BatchNorm2d(96),
+            nn.Conv2d(in_channels=feature_num, out_channels=2 * feature_num, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(num_features=2 * feature_num),
             nn.ReLU(True),
 
-            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(True),
-            nn.Dropout(0.3),
-
-            # Starting to decrease depth back to 3 channels
-            nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(in_channels=2 * feature_num, out_channels=4 * feature_num, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(num_features=4 * feature_num),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
+            ResidualBlock(4 * feature_num),
+            ResidualBlock(4 * feature_num),
+            ResidualBlock(4 * feature_num),
+            ResidualBlock(4 * feature_num),
+
+            nn.ConvTranspose2d(in_channels=4 * feature_num, out_channels=8 * feature_num, kernel_size=3, stride=1,
+                               padding=1),
+            nn.PixelShuffle(2),
+            nn.BatchNorm2d(num_features=2 * feature_num),
             nn.ReLU(True),
 
-            # Output should be an RGB image with 3 channels
-            nn.Conv2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(in_channels=2 * feature_num, out_channels=4 * feature_num, kernel_size=3, stride=1,
+                               padding=1),
+            nn.PixelShuffle(2),
+            nn.BatchNorm2d(num_features=feature_num),
+            nn.ReLU(True),
+
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(in_channels=feature_num, out_channels=3, kernel_size=7, stride=1, padding=0),
             nn.Tanh()
         )
 

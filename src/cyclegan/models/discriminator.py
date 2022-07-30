@@ -12,33 +12,27 @@ class Discriminator(BaseModel):
         - A single value, representing the probability that the image is real.
     """
 
-    def __init__(self):
+    def __init__(self, in_feacher: int = 3, out_feacher: int = 64):
         super().__init__()
-
         self.layers = nn.Sequential(
-            # Input is an RGB image
-            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(in_channels=in_feacher, out_channels=out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.3),
-
-            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(256),
+            nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher, kernel_size=4, stride=2, padding=1,
+                      bias=False),
+            nn.BatchNorm2d(2 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(in_channels=2 * out_feacher, out_channels=4 * out_feacher, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(4 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.3),
 
-            # Output is a single value, representing the probability that the image is real.
-            nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1),
-            nn.Flatten(),
-            nn.Softmax(),
-            nn.Tanh()
+            nn.Conv2d(in_channels=4 * out_feacher, out_channels=8 * out_feacher, kernel_size=4, stride=1, padding=1),
+            nn.BatchNorm2d(8 * out_feacher),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=8 * out_feacher, out_channels=1, kernel_size=4, stride=1, padding=1),
+            nn.Sigmoid()
         )
 
     def forward(self, image):
