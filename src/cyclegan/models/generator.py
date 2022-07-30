@@ -1,7 +1,9 @@
+import torch
 import torch.nn as nn
 from collections import deque
 
 from .base_model import BaseModel
+
 
 class Generator(BaseModel):
     """
@@ -18,6 +20,7 @@ class Generator(BaseModel):
 
         # We keep the last image generated to calculate losses
         self.last_generated = deque(maxlen=100)
+        self.last_generated.append(torch.full((256, 256), 1))
 
         self.layers = nn.Sequential(
             # Input of network is a random z

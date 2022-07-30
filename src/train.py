@@ -186,7 +186,7 @@ def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx
 def train(args, device):
     dataloader = init_dataset(args)
 
-    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, models_counting())
+    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, models_counting(), device)
 
     for epoch_idx in range(args.epochs):
         progress_bar = tqdm(dataloader, desc="Epoch {}".format(epoch_idx))

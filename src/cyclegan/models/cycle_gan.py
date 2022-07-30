@@ -12,10 +12,11 @@ from .base_model import BaseModel
 
 
 class CycleGAN(BaseModel):
-    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, counters: dict):
+    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, counters: dict, device):
         super().__init__()
 
         self.lambda_param = lambda_param
+        self.device = device
 
         # Define the generators and discriminators
         self.generator_A2B = Generator()
@@ -26,8 +27,8 @@ class CycleGAN(BaseModel):
         self.init_models(continue_learning, counters)
 
         # Define the loss functions
-        self.identity_loss_func = torch.nn.MSELoss()
-        self.adversarial_loss_func = torch.nn.BCELoss()
+        self.identity_loss_func = torch.nn.L1Loss()
+        self.adversarial_loss_func = torch.nn.MSELoss()
         self.cycle_loss_func = torch.nn.MSELoss()
 
         ##############
@@ -66,15 +67,14 @@ class CycleGAN(BaseModel):
         """
         # Real
         real_pred = discriminator(real_image)
-        loss_real = self.identity_loss_func(real_pred, torch.ones_like(real_pred))
+        loss_real = self.identity_loss_func(real_pred, torch.full(real_pred.shape, 1).to(torch.float32))
         # Fake
         fake_pred = discriminator(fake_image)
-        loss_fake = self.identity_loss_func(fake_pred, torch.zeros_like(real_pred))
+        loss_fake = self.identity_loss_func(fake_pred, torch.full(real_pred.shape, 0).to(torch.float32))
 
         # Compute the loss
         loss = (loss_fake + loss_real)
         loss.backward()
-
         optimizer.step()
         return loss
 
@@ -87,7 +87,7 @@ class CycleGAN(BaseModel):
         """
         fake = generator(real)
         disc_prediction = discriminator(fake)
-        disc_loss = self.adversarial_loss_func(disc_prediction, torch.ones_like(disc_prediction))
+        disc_loss = self.adversarial_loss_func(disc_prediction, torch.full(disc_prediction.shape, 1, device=self.device).to(torch.float32))
         disc_loss.backward()
 
         optimizer.step()
@@ -132,8 +132,8 @@ class CycleGAN(BaseModel):
         #########################################################
         # Update the generators with CycleGAN and Adversarial   #
         #########################################################
-        self.discriminator_A.set_requires_grad(False)
-        self.discriminator_B.set_requires_grad(False)
+        # self.discriminator_A.set_requires_grad(False)
+        # self.discriminator_B.set_requires_grad(False)
 
         # Adversarial loss
         losses["genA2B_adversarial"] = self.adversarial_loss(self.generator_A2B, self.discriminator_B,
@@ -146,14 +146,15 @@ class CycleGAN(BaseModel):
         #####################################################
         # Update the discriminators using Identity loss     #
         #####################################################
-        self.discriminator_A.set_requires_grad(True)
-        self.discriminator_B.set_requires_grad(True)
+        # self.discriminator_A.set_requires_grad(True)
+        # self.discriminator_B.set_requires_grad(True)
 
-        fake_imageA = self.generator_B2A.last_generated.pop()
+        fake_imageA = self.generator_B2A.last_generated.pop().detach()
         losses["discA_identity"] = self.identity_loss(self.discriminator_A, self.discA_optim, real_imageA,
                                                       fake_imageA)
 
-        fake_imageB = self.generator_A2B.last_generated.pop()
+        fake_imageB = self.generator_A2B.last_generated.pop().detach()
         losses["discB_identity"] = self.identity_loss(self.discriminator_B, self.discB_optim, real_imageB,
                                                       fake_imageB)
+
         return losses
