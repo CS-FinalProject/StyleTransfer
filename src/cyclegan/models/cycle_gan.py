@@ -67,11 +67,13 @@ class CycleGAN(BaseModel):
         """
         # Real
         real_pred = discriminator(real_image).to(self.device)
-        loss_real = self.identity_loss_func(real_pred, torch.full(real_pred.shape, 1).to(torch.float32))
+        loss_real = self.identity_loss_func(real_pred,
+                                            torch.full(real_pred.shape, 1, device=self.device).to(torch.float32))
         # Fake
         fake_image = fake_image.to(self.device)
         fake_pred = discriminator(fake_image)
-        loss_fake = self.identity_loss_func(fake_pred, torch.full(real_pred.shape, 0).to(torch.float32))
+        loss_fake = self.identity_loss_func(fake_pred,
+                                            torch.full(real_pred.shape, 0, device=self.device).to(torch.float32))
 
         # Compute the loss
         loss = (loss_fake + loss_real)
