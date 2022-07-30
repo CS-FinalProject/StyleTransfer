@@ -12,11 +12,11 @@ class ResidualBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_features, in_features, 3),
-            nn.InstanceNorm2d(in_features),
+            nn.BatchNorm2d(in_features),
             nn.ReLU(inplace=True),
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_features, in_features, 3),
-            nn.InstanceNorm2d(in_features),
+            nn.BatchNorm2d(in_features),
         )
 
     def forward(self, x):
