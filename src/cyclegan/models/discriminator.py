@@ -20,15 +20,15 @@ class Discriminator(BaseModel):
 
             nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher, kernel_size=4, stride=2, padding=1,
                       bias=False),
-            nn.BatchNorm2d(2 * out_feacher),
+            nn.InstanceNorm2d(2 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=2 * out_feacher, out_channels=4 * out_feacher, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(4 * out_feacher),
+            nn.InstanceNorm2d(4 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=4 * out_feacher, out_channels=8 * out_feacher, kernel_size=4, stride=1, padding=1),
-            nn.BatchNorm2d(8 * out_feacher),
+            nn.InstanceNorm2d(8 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=8 * out_feacher, out_channels=1, kernel_size=4, stride=1, padding=1),

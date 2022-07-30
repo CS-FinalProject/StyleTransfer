@@ -12,11 +12,11 @@ class ResidualBlock(nn.Module):
         self.block = nn.Sequential(
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_features, in_features, 3),
-            nn.BatchNorm2d(in_features),
+            nn.InstanceNorm2d(in_features),
             nn.ReLU(inplace=True),
             nn.ReflectionPad2d(1),
             nn.Conv2d(in_features, in_features, 3),
-            nn.BatchNorm2d(in_features),
+            nn.InstanceNorm2d(in_features),
         )
 
     def forward(self, x):
@@ -43,17 +43,18 @@ class Generator(BaseModel):
         self.layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(in_channels=3, out_channels=feature_num, kernel_size=7, stride=1, padding=0),
-            nn.BatchNorm2d(num_features=feature_num),
+            nn.InstanceNorm2d(num_features=feature_num),
             nn.ReLU(True),
 
             nn.Conv2d(in_channels=feature_num, out_channels=2 * feature_num, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(num_features=2 * feature_num),
+            nn.InstanceNorm2d(num_features=2 * feature_num),
             nn.ReLU(True),
 
             nn.Conv2d(in_channels=2 * feature_num, out_channels=4 * feature_num, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(num_features=4 * feature_num),
+            nn.InstanceNorm2d(num_features=4 * feature_num),
             nn.ReLU(True),
 
+            ResidualBlock(4 * feature_num),
             ResidualBlock(4 * feature_num),
             ResidualBlock(4 * feature_num),
             ResidualBlock(4 * feature_num),
@@ -62,13 +63,13 @@ class Generator(BaseModel):
             nn.ConvTranspose2d(in_channels=4 * feature_num, out_channels=8 * feature_num, kernel_size=3, stride=1,
                                padding=1),
             nn.PixelShuffle(2),
-            nn.BatchNorm2d(num_features=2 * feature_num),
+            nn.InstanceNorm2d(num_features=2 * feature_num),
             nn.ReLU(True),
 
             nn.ConvTranspose2d(in_channels=2 * feature_num, out_channels=4 * feature_num, kernel_size=3, stride=1,
                                padding=1),
             nn.PixelShuffle(2),
-            nn.BatchNorm2d(num_features=feature_num),
+            nn.InstanceNorm2d(num_features=feature_num),
             nn.ReLU(True),
 
             nn.ReflectionPad2d(3),
