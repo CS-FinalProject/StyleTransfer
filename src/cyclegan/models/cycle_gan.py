@@ -12,11 +12,12 @@ from .base_model import BaseModel
 
 
 class CycleGAN(BaseModel):
-    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device):
+    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device, counter: int):
         super().__init__()
 
         self.lambda_param = lambda_param
         self.device = device
+        self.counter = counter
 
         # Define the generators and discriminators
         self.generator_A2B = Generator().to(device)

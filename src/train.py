@@ -121,6 +121,7 @@ def init_dataset(args) -> torch.utils.data.DataLoader:
 
 
 def save_checkpoint(cycle_gan: CycleGAN, epoch_idx: int, batch_idx: int):
+    cycle_gan.counter += 1
     checkpoint = Checkpoint(epoch_idx, batch_idx, cycle_gan)
     torch.save(checkpoint, os.path.join("models", str(cycle_gan.counter) + ".pth"))
     wandb.save(os.path.join("models", str(cycle_gan.counter) + ".pth"))
@@ -147,9 +148,6 @@ def load_checkpoint(path: str, model: CycleGAN) -> tuple:
 def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx: int, cycle_gan: CycleGAN):
     if batch_idx % args.save_model_freq != 0 or batch_idx == 0:
         return
-
-    for model in cycle_gan.counters:
-        cycle_gan.counters[model] += 1
 
     # Saving the current trained models
     save_checkpoint(cycle_gan, epoch_idx, batch_idx)
@@ -188,11 +186,11 @@ def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx
 
 def train(args, device):
     dataloader = init_dataset(args)
+    latest_model = init_models_counting("models")
 
-    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device)
+    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device, latest_model)
 
     if args.continue_training:
-        latest_model = init_models_counting("models")
         last_epoch, last_batch = load_checkpoint(os.path.join("models", str(latest_model) + ".pth"), cycle_gan_model)
     else:
         last_epoch = 0
