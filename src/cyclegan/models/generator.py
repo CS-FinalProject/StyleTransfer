@@ -59,6 +59,7 @@ class Generator(BaseModel):
             ResidualBlock(4 * feature_num),
             ResidualBlock(4 * feature_num),
             ResidualBlock(4 * feature_num),
+            ResidualBlock(4 * feature_num),
 
             nn.ConvTranspose2d(in_channels=4 * feature_num, out_channels=8 * feature_num, kernel_size=3, stride=1,
                                padding=1),
