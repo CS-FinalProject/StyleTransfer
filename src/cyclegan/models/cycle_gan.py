@@ -25,6 +25,7 @@ class CycleGAN(BaseModel):
         self.discriminator_B = Discriminator().to(device)
 
         self.init_models(continue_learning, counters)
+        self.counters = counters
 
         # Define the loss functions
         self.identity_loss_func = torch.nn.L1Loss()
