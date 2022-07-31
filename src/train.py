@@ -89,10 +89,10 @@ def init_folders(args) -> None:
         os.makedirs(DISC_A_PATH)
     if not os.path.exists(DISC_B_PATH):
         os.makedirs(DISC_B_PATH)
-    if not os.path.exists(os.path.join(args.outf, os.path.join("outputs", "A"))):
-        os.makedirs(os.path.join(args.outf, os.path.join("outputs", "A")))
-    if not os.path.exists(os.path.join(args.outf, os.path.join("outputs", "B"))):
-        os.makedirs(os.path.join(args.outf, os.path.join("outputs", "B")))
+    if not os.path.exists(os.path.join(args.outf, "A")):
+        os.makedirs(os.path.join(args.outf, "A"))
+    if not os.path.exists(os.path.join(args.outf, "B")):
+        os.makedirs(os.path.join(args.outf, "B"))
 
 
 def init_models_counting(dir_path: str) -> int:
