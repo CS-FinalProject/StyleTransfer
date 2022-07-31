@@ -12,7 +12,7 @@ from .base_model import BaseModel
 
 
 class CycleGAN(BaseModel):
-    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, counters: dict, device):
+    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device):
         super().__init__()
 
         self.lambda_param = lambda_param
@@ -24,9 +24,7 @@ class CycleGAN(BaseModel):
         self.discriminator_A = Discriminator().to(device)
         self.discriminator_B = Discriminator().to(device)
 
-        self.init_models(continue_learning, counters)
-        self.counters = counters
-
+        self.init_models(continue_learning)
         # Define the loss functions
         self.identity_loss_func = torch.nn.L1Loss()
         self.adversarial_loss_func = torch.nn.MSELoss()
@@ -46,14 +44,9 @@ class CycleGAN(BaseModel):
         self.discA_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discA_optim, gamma=0.5)
         self.discB_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discB_optim, gamma=0.5)
 
-    def init_models(self, cont: bool, counters: dict) -> None:
+    def init_models(self, cont: bool) -> None:
         # Load the latest models if we want to continue learning
-        if cont and len(os.listdir(GEN_A2B_PATH)) > 0:
-            self.generator_A2B.load_state_dict(torch.load(path.join(GEN_A2B_PATH, str(counters["genA2B"]) + ".pth")))
-            self.generator_B2A.load_state_dict(torch.load(path.join(GEN_B2A_PATH, str(counters["genB2A"]) + ".pth")))
-            self.discriminator_A.load_state_dict(torch.load(path.join(DISC_A_PATH, str(counters["discA"]) + ".pth")))
-            self.discriminator_B.load_state_dict(torch.load(path.join(DISC_B_PATH, str(counters["discB"]) + ".pth")))
-        else:
+        if not cont:
             self.generator_A2B.apply(weights_init)
             self.generator_B2A.apply(weights_init)
             self.discriminator_A.apply(weights_init)

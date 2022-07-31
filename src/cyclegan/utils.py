@@ -18,10 +18,12 @@ import torch
 
 IMAGE_SIZE = 64
 
-GEN_A2B_PATH = os.path.join("models", "genA2B")
-GEN_B2A_PATH = os.path.join("models", "genB2A")
-DISC_A_PATH = os.path.join("models", "discA")
-DISC_B_PATH = os.path.join("models", "discB")
+paths = {
+    "genA2B": os.path.join("models", "genA2B"),
+    "genB2A": os.path.join("models", "genB2A"),
+    "discA": os.path.join("models", "discA"),
+    "discB": os.path.join("models", "discB"),
+}
 
 
 class ReplayBuffer:
@@ -55,3 +57,19 @@ def weights_init(m):
     elif classname.find("BatchNorm") != -1:
         torch.nn.init.normal_(m.weight, 1.0, 0.02)
         torch.nn.init.zeros_(m.bias)
+
+
+class Checkpoint:
+    def __init__(self, epoch: int, batch: int, model):
+        self.epoch = epoch + 1
+        self.batch = batch + 1
+
+        self.genA2B = model.generatorA2B.state_dict()
+        self.genB2A = model.generatorB2A.state_dict()
+        self.discA = model.discriminatorA.state_dict()
+        self.discB = model.discriminatorB.state_dict()
+
+        self.genA2B_optim = model.genA2B_optim.state_dict()
+        self.genB2A_optim = model.genB2A_optim.state_dict()
+        self.discA_optim = model.discA_optim.state_dict()
+        self.discB_optim = model.discB_optim.state_dict()
