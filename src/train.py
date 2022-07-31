@@ -131,18 +131,18 @@ def load_checkpoint(path: str, model: CycleGAN) -> tuple:
     checkpoint = torch.load(path)
 
     # Loading sub-models
-    model.generator_A2B.load_state_dict(checkpoint["genA2B"])
-    model.generator_B2A.load_state_dict(checkpoint["genB2A"])
-    model.discriminator_A.load_state_dict(checkpoint["discA"])
-    model.discriminator_B.load_state_dict(checkpoint["discB"])
+    model.generator_A2B.load_state_dict(checkpoint.genA2B)
+    model.generator_B2A.load_state_dict(checkpoint.genB2A)
+    model.discriminator_A.load_state_dict(checkpoint.discA)
+    model.discriminator_B.load_state_dict(checkpoint.discB)
 
     # Loading optimizers for each model
-    model.genA2B_optim.load_state_dict(checkpoint["genA2B_optim"])
-    model.genB2A_optim.load_state_dict(checkpoint["genB2A_optim"])
-    model.discA_optim.load_state_dict(checkpoint["discA_optim"])
-    model.discB_optim.load_state_dict(checkpoint["discB_optim"])
+    model.genA2B_optim.load_state_dict(checkpoint.genA2B_optim)
+    model.genB2A_optim.load_state_dict(checkpoint.genB2A_optim)
+    model.discA_optim.load_state_dict(checkpoint.discA_optim)
+    model.discB_optim.load_state_dict(checkpoint.discB_optim)
 
-    return checkpoint["epoch"], checkpoint["batch"]
+    return checkpoint.epoch, checkpoint.batch
 
 
 def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx: int, cycle_gan: CycleGAN):

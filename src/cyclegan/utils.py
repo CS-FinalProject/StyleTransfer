@@ -64,10 +64,10 @@ class Checkpoint:
         self.epoch = epoch + 1
         self.batch = batch + 1
 
-        self.genA2B = model.generatorA2B.state_dict()
-        self.genB2A = model.generatorB2A.state_dict()
-        self.discA = model.discriminatorA.state_dict()
-        self.discB = model.discriminatorB.state_dict()
+        self.genA2B = model.generator_A2B.state_dict()
+        self.genB2A = model.generator_B2A.state_dict()
+        self.discA = model.discriminator_A.state_dict()
+        self.discB = model.discriminator_B.state_dict()
 
         self.genA2B_optim = model.genA2B_optim.state_dict()
         self.genB2A_optim = model.genB2A_optim.state_dict()
