@@ -191,8 +191,11 @@ def train(args, device):
 
     cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device)
 
-    latest_model = init_models_counting("models")
-    last_epoch, last_batch = load_checkpoint(os.path.join("models", str(latest_model) + ".pth"), cycle_gan_model)
+    if args.continue_training:
+        latest_model = init_models_counting("models")
+        last_epoch, last_batch = load_checkpoint(os.path.join("models", str(latest_model) + ".pth"), cycle_gan_model)
+    else:
+        last_epoch = 0
 
     for epoch_idx in range(last_epoch, args.epochs):
         progress_bar = tqdm(dataloader, desc="Epoch {}".format(epoch_idx))
