@@ -161,8 +161,11 @@ class CycleGAN(BaseModel):
 
         fake_imageA = self.generator_B2A.last_generated.pop().detach()
         losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA,
-                                                            self.generator_B2A.last_generated.pop())
+                                                            self.generator_B2A.last_generated.pop().detach())
         losses["discB_adversarial"] = self.adversarial_loss(self.discriminator_B, self.discB_optim, real_imageB,
-                                                            self.generator_A2B.last_generated.pop())
+                                                            self.generator_A2B.last_generated.pop().detach())
+
+        self.genA2B_optim.step()
+        self.genB2A_optim.step()
 
         return losses
