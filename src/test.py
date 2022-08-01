@@ -8,20 +8,18 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from tqdm import tqdm
+from cyclegan.utils import Checkpoint
+from train import load_checkpoint
+from cyclegan.models.cycle_gan import CycleGAN
+from cyclegan import ImageDataset
+import wandb
 
-from cyclegan_pytorch import Generator
-from cyclegan_pytorch import ImageDataset
 
 def arguments_parsing():
     parser = argparse.ArgumentParser(
-        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks`")
-    parser.add_argument("--dataroot", type=str, default="./data",
+        description="Test model results of Style Transfer")
+    parser.add_argument("--dataroot", type=str, default=".",
                         help="path to datasets. (default:./data)")
-    parser.add_argument("--dataset", type=str, default="horse2zebra",
-                        help="dataset name. (default:`horse2zebra`)"
-                             "Option: [apple2orange, summer2winter_yosemite, horse2zebra, monet2photo, "
-                             "cezanne2photo, ukiyoe2photo, vangogh2photo, maps, facades, selfie2anime, "
-                             "iphone2dslr_flower, ae_photos, ]")
     parser.add_argument("--cuda", action="store_true", help="Enables cuda")
     parser.add_argument("--outf", default="./results",
                         help="folder to output images. (default: `./results`).")
@@ -29,6 +27,8 @@ def arguments_parsing():
                         help="size of the data crop (squared assumed). (default:256)")
     parser.add_argument("--manualSeed", type=int,
                         help="Seed for initializing training. (default:none)")
+    parser.add_argument("--model-path", type=str,
+                        help="A path to a specific model, if not specified, the program will automatically load the latest one")
 
     args = parser.parse_args()
 
@@ -63,25 +63,22 @@ def init_dataset(args) -> torch.utils.data.DataLoader:
     return dataloader
 
 
-def create_and_load_model(args, device) -> tuple:
-    # create models
-    generator_A2B = Generator().to(device)
-    generator_B2A = Generator().to(device)
-
-    # Load state dicts
-    generator_A2B.load_state_dict(torch.load(os.path.join("weights", str(args.dataset), "netG_A2B.pth")))
-    generator_B2A.load_state_dict(torch.load(os.path.join("weights", str(args.dataset), "netG_B2A.pth")))
+def create_and_load_model(args, device, run) -> CycleGAN:
+    model = CycleGAN(0.02, 0, True, device, 0)
+    load_checkpoint(model, run)
 
     # Set model mode
-    generator_A2B.eval()
-    generator_B2A.eval()
+    model.generator_A2B.eval()
+    model.generator_B2A.eval()
 
-    return generator_A2B, generator_B2A
+    return model
 
 
-def test(args, device):
+def test(args, device, run):
     dataloader = init_dataset(args)
     progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
+
+    model = create_and_load_model(args, device, run)
 
     for i, data in progress_bar:
         # get batch size data
@@ -89,9 +86,8 @@ def test(args, device):
         real_images_B = data["B"].to(device)
 
         # Generate output
-        generator_A2B, generator_B2A = creat_and_load_model(args, device)
-        fake_image_A = 0.5 * (generator_B2A(real_images_B).data + 1.0)
-        fake_image_B = 0.5 * (generator_A2B(real_images_A).data + 1.0)
+        fake_image_A = 0.5 * (model(real_images_B, is_inverse=True).data + 1.0)
+        fake_image_B = 0.5 * (model(real_images_A, is_inverse=False).data + 1.0)
 
         # Save image files
         vutils.save_image(fake_image_A.detach(), f"{args.outf}/{args.dataset}/A/{i + 1:04d}.png", normalize=True)
@@ -101,6 +97,7 @@ def test(args, device):
 
 
 def main():
+    run = wandb.init(project="style-transfer")
     args = arguments_parsing()
     device = torch.device("cuda:0" if args.cuda else "cpu")
     init_folders(args)
@@ -110,7 +107,8 @@ def main():
     if torch.cuda.is_available() and not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    test(device)
+    test(args, device, run)
+    wandb.finish()
 
 
 if __name__ == "__main__":

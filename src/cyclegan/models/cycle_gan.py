@@ -60,6 +60,7 @@ class CycleGAN(BaseModel):
         known labels. Only affects the discriminator.
         :return: Loss value
         """
+        self.switch_mode()
         # Real
         real_pred = discriminator(real_image).to(self.device)
         loss_real = self.identity_loss_func(real_pred,
@@ -83,6 +84,7 @@ class CycleGAN(BaseModel):
         input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
+        self.switch_mode()
         fake = generator(real).to(self.device)
         disc_prediction = discriminator(fake)
         disc_loss = self.adversarial_loss_func(disc_prediction,
@@ -95,6 +97,7 @@ class CycleGAN(BaseModel):
 
     def forward_cycle_loss(self, generator: Generator, inv_generator: Generator, optimizer,
                            real: torch.Tensor) -> torch.Tensor:
+        self.switch_mode()
         fake_image = generator(real).to(self.device)
         converted_back = inv_generator(fake_image).to(self.device)
         loss = self.cycle_loss_func(converted_back, real)
@@ -104,6 +107,7 @@ class CycleGAN(BaseModel):
         return loss
 
     def cycle_loss(self, realA: torch.Tensor, realB: torch.Tensor) -> torch.Tensor:
+        self.switch_mode()
         forward_loss = self.forward_cycle_loss(self.generator_A2B, self.generator_B2A, self.genA2B_optim,
                                                realA) * self.lambda_param
         backward_loss = self.forward_cycle_loss(self.generator_B2A, self.generator_A2B, self.genB2A_optim,
@@ -111,9 +115,23 @@ class CycleGAN(BaseModel):
         return forward_loss + backward_loss
 
     def forward(self, image: torch.Tensor, is_inverse: bool = True):
+        self.switch_mode()
+
         if not is_inverse:
             return self.generator_A2B(image)
         return self.generator_B2A(image)
+
+    def switch_mode(self):
+        if not self.training:
+            self.generator_A2B.eval()
+            self.generator_B2A.eval()
+            self.discriminator_B.eval()
+            self.discriminator_A.eval()
+        else:
+            self.generator_A2B.train()
+            self.generator_B2A.train()
+            self.discriminator_B.train()
+            self.discriminator_A.train()
 
     def step_lr_schedulers(self):
         self.genA2B_lr_scheduler.step()
