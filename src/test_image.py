@@ -66,3 +66,4 @@ fake_image = model(image, args.is_inverse)
 elapsed = (timeit.default_timer() - start)
 print(f"cost {elapsed:.4f}s")
 vutils.save_image(fake_image.detach(), os.path.join(args.outf, "result.png"), normalize=True)
+

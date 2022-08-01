@@ -62,6 +62,25 @@ $ ./data/get_dataset.sh
 
 ### Test
 
+```text
+usage: test.py [-h] [--dataroot DATAROOT] [--cuda] [--outf OUTF] [--image-size IMAGE_SIZE] [--manualSeed MANUALSEED] [--model-path MODEL_PATH]
+
+Test model results of Style Transfer
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dataroot DATAROOT   path to datasets. (default:./data)
+  --cuda                Enables cuda
+  --outf OUTF           folder to output images. (default: `./results`).
+  --image-size IMAGE_SIZE
+                        size of the data crop (squared assumed). (default:256)
+  --manualSeed MANUALSEED
+                        Seed for initializing training. (default:none)
+  --model-path MODEL_PATH
+                        A path to a specific model, if not specified, the program will automatically load the latest one
+
+```
+
 The following commands can be used to test the whole test.
 
 ```bash
@@ -71,76 +90,52 @@ $ python3 test.py --cuda
 For single image processing, use the following command:
 
 ```bash
-$ python3 test_image.py --file assets/horse.png --model-name weights/horse2zebra/netG_A2B.pth --cuda
+$ python3 test_image.py --file assets/cezanne.png --cuda
 ```
-
-InputA --> StyleB  --> RecoveryA
-
-<img src="assets/apple.png" title="InputA"/><img src="assets/fake_orange.png" title="StyleB"><img src="assets/fake_apple.png" title="RecoveryA">
-<img src="assets/cezanne.png" title="InputA"/><img src="assets/fake_photo.png" title="StyleB"><img src="assets/fake_cezanne.png" title="RecoveryA">
-<img src="assets/facades.png" title="InputA"/><img src="assets/fake_facades1.png" title="StyleB"><img src="assets/fake_facades2.png" title="RecoveryA">
-<img src="assets/horse.png" title="InputA"/><img src="assets/fake_zebra.png" title="StyleB"><img src="assets/fake_horse.png" title="RecoveryA">
 
 ### Train
 
 ```text
-usage: train.py [-h] [--dataroot DATAROOT] [--dataset DATASET] [--epochs N]
-                [--decay_epochs DECAY_EPOCHS] [-b N] [--lr LR] [-p N] [--cuda]
-                [--netG_A2B NETG_A2B] [--netG_B2A NETG_B2A] [--netD_A NETD_A]
-                [--netD_B NETD_B] [--image-size IMAGE_SIZE] [--outf OUTF]
-                [--manualSeed MANUALSEED]
+usage: train.py [-h] [--dataroot DATAROOT] [--epochs N] [--decay_epochs DECAY_EPOCHS] [-b N] [--lr LR] [--cuda] [--continue-training CONTINUE_TRAINING] [--image-size IMAGE_SIZE] [--outf OUTF] [--manualSeed MANUALSEED]
+                [--save_model_freq SAVE_MODEL_FREQ] [--lambda_param LAMBDA_PARAM]
 
-PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent
-Adversarial Networks`
+Style Transfer training
 
 optional arguments:
   -h, --help            show this help message and exit
   --dataroot DATAROOT   path to datasets. (default:./data)
-  --dataset DATASET     dataset name. (default:`horse2zebra`)Option:
-                        [apple2orange, summer2winter_yosemite, horse2zebra,
-                        monet2photo, cezanne2photo, ukiyoe2photo,
-                        vangogh2photo, maps, facades, selfie2anime,
-                        iphone2dslr_flower, ae_photos, ]
   --epochs N            number of total epochs to run
   --decay_epochs DECAY_EPOCHS
-                        epoch to start linearly decaying the learning rate to
-                        0. (default:100)
-  -b N, --batch-size N  mini-batch size (default: 1), this is the total batch
-                        size of all GPUs on the current node when using Data
-                        Parallel or Distributed Data Parallel
+                        epoch to start linearly decaying the learning rate to 0. (default:100)
+  -b N, --batch-size N  mini-batch size (default: 1), this is the total batch size of all GPUs on the current node when using Data Parallel or Distributed Data Parallel
   --lr LR               learning rate. (default:0.0002)
-  -p N, --print-freq N  print frequency. (default:100)
   --cuda                Enables cuda
-  --netG_A2B NETG_A2B   path to netG_A2B (to continue training)
-  --netG_B2A NETG_B2A   path to netG_B2A (to continue training)
-  --netD_A NETD_A       path to netD_A (to continue training)
-  --netD_B NETD_B       path to netD_B (to continue training)
+  --continue-training CONTINUE_TRAINING
+                        If this flag is true, then the training will resume from the last checkpoint
   --image-size IMAGE_SIZE
                         size of the data crop (squared assumed). (default:256)
   --outf OUTF           folder to output images. (default:`./outputs`).
   --manualSeed MANUALSEED
                         Seed for initializing training. (default:none)
-
+  --save_model_freq SAVE_MODEL_FREQ
+                        The program will save the model each N batches
+  --lambda_param LAMBDA_PARAM
+                        The lambda parameter introduced in the paper. It's a weight for the cycle loss
 ```
 
 #### Example
 
 ```bash
 # Example: horse2zebra
-$ python3 train.py --dataset horse2zebra --cuda
+$ python3 train.py --cuda --save_model_freq 3000
 ```
 
 #### Resume training
 
-If you want to load weights that you've trained before, run the following command.
+We save all models in W&B, so using the flag will load the latest automatically.
 
 ```bash
-# Example: horse2zebra for epoch 100
-$ python3 train.py --dataset horse2zebra \
-    --netG_A2B weights/horse2zebra/netG_A2B_epoch_100.pth \
-    --netG_B2A weights/horse2zebra/netG_B2A_epoch_100.pth \
-    --netD_A weights/horse2zebra/netD_A_epoch_100.pth \
-    --netD_B weights/horse2zebra/netD_B_epoch_100.pth --cuda
+$ python3 train.py --cuda --save_model_freq 3000 --continue-training=True
 ```
 
 ### Credit

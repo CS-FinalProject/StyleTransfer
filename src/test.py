@@ -97,8 +97,8 @@ def test(args, device, run):
 
 
 def main():
-    run = wandb.init(project="style-transfer")
     args = arguments_parsing()
+    run = wandb.init(project="style-transfer")
     device = torch.device("cuda:0" if args.cuda else "cpu")
     init_folders(args)
 

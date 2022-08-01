@@ -19,8 +19,7 @@ def arguments_parsing():
     Define arguments for the training process.
     """
     parser = argparse.ArgumentParser(
-        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial "
-                    "Networks`")
+        description="Style Transfer training")
     parser.add_argument("--dataroot", type=str, default=".",
                         help="path to datasets. (default:./data)")
     parser.add_argument("--epochs", default=200, type=int, metavar="N",
