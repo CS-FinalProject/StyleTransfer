@@ -12,10 +12,10 @@ class Discriminator(BaseModel):
         - A single value, representing the probability that the image is real.
     """
 
-    def __init__(self, in_feacher: int = 3, out_feacher: int = 64):
+    def __init__(self, in_feature: int = 3, out_feacher: int = 64):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_feacher, out_channels=out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=in_feature, out_channels=out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher, kernel_size=4, stride=2, padding=1, bias=False),

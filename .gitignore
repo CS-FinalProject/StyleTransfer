@@ -10,6 +10,7 @@ wandb/
 dataset/
 venv/
 models/
+src/artifacts/
 
 # Distribution / packaging
 .Python

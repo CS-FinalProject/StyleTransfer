@@ -1,58 +1,63 @@
-# CycleGAN-PyTorch
+# Style Transfer
 
 ### Overview
-This repository contains an op-for-op PyTorch reimplementation of [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593).
-
-[Demo and Docker image on Replicate](https://replicate.ai/lornatang/cyclegan-pytorch)
+This repository is a simplified implementation of [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593).  
 
 ### Table of contents
-1. [About Cycle Generative Adversarial Networks](#about-cycle-generative-adversarial-networks)
-2. [Model Description](#model-description)
-3. [Installation](#installation)
+1. [About Generative Adversarial Networks](#about-generative-adversarial-networks)
+   * [Generator](#generator)
+   * [Discriminator](#discriminator)
+2. [About CycleGAN](#about-cyclegan)
+3. [Installation and Usage](#installation-and-usage)
     * [Clone and install requirements](#clone-and-install-requirements)
     * [Download pretrained weights](#download-pretrained-weights)
     * [Download dataset](#download-dataset)
 4. [Test](#test)
-4. [Train](#train)
+5. [Train](#train)
     * [Example](#example)
     * [Resume training](#resume-training)
-5. [Contributing](#contributing) 
 6. [Credit](#credit)
 
-### About Cycle Generative Adversarial Networks
+### About Generative Adversarial Networks
+Generative Adversarial Networks, or GANs for short, are tasks in which a model can generate new examples which
+could have been drawn from the original dataset.
 
-If you're new to CycleGAN, here's an abstract straight from the paper:
+GANs are constructed from two neural nets:
 
-Image-to-image translation is a class of vision and graphics problems where the goal is to learn the mapping between an input image and an output image using a training set of aligned image pairs. However, for many tasks, paired training data will not be available. We present an approach for learning to translate an image from a source domain X to a target domain Y in the absence of paired examples. Our goal is to learn a mapping G:X→Y such that the distribution of images from G(X) is indistinguishable from the distribution Y using an adversarial loss. Because this mapping is highly under-constrained, we couple it with an inverse mapping F:Y→X and introduce a cycle consistency loss to push F(G(X))≈X (and vice versa). Qualitative results are presented on several tasks where paired training data does not exist, including collection style transfer, object transfiguration, season transfer, photo enhancement, etc. Quantitative comparisons against several prior methods demonstrate the superiority of our approach.
+#### Generator
+The generator is a net which generates new data based on the dataset. Its goal is to "trick" the discriminator
+into predicting its outputs as real data.
 
-### Model Description
+The net inputs a random noise vector $(z)$, and generates an image from it.
 
-We have two networks, G (Generator) and D (Discriminator).The Generator is a network for generating images. It receives a random noise z and generates images from this noise, which is called G(z).Discriminator is a discriminant network that discriminates whether an image is real. The input is x, x is a picture, and the output is D of x is the probability that x is a real picture, and if it's 1, it's 100% real, and if it's 0, it's not real.
+#### Discriminator
+The discriminator is a net which discriminates between real and fake data of a certain domain. Given an image,
+the discriminator will predict whether the image is real or fake.
 
-### Installation
+The net inputs an RGB image, and outputs a probability.
+
+### About CycleGAN
+We've seen the description for GANs, in the paper, a new architecture is presented, CycleGAN.
+
+The CycleGAN architecture works in such a way that the mapping is learned on both directions. 
+So, if in a regular GAN model we learn a mapping $(X -> Y)$, in CycleGAN we also learn the mapping $(Y -> X)$.
+
+The forward mapping generator is notated as $(G)$, and the backward one as $(F)$.
+
+### Installation and Usage
 
 #### Clone and install requirements
 
 ```bash
-$ git clone https://github.com/Lornatang/CycleGAN-PyTorch
-$ cd CycleGAN-PyTorch/
+$ git clone https://github.com/CS-FinalProject/StyleTransfer.git
+$ cd StyleTransfer/
 $ pip3 install -r requirements.txt
-```
-
-#### Download pretrained weights
-
-```bash
-# example: horse2zebra
-$ cd weights/
-$ bash download_weights.sh horse2zebra
 ```
 
 #### Download dataset
 
 ```bash
-# example: horse2zebra
-$ cd data/
-$ bash get_dataset.sh horse2zebra
+$ ./data/get_dataset.sh
 ```
 
 ### Test
@@ -60,11 +65,10 @@ $ bash get_dataset.sh horse2zebra
 The following commands can be used to test the whole test.
 
 ```bash
-# Example: horse2zebra
-$ python3 test.py --dataset horse2zebra --cuda
+$ python3 test.py --cuda
 ```
 
-For single image processing, use the following command.
+For single image processing, use the following command:
 
 ```bash
 $ python3 test_image.py --file assets/horse.png --model-name weights/horse2zebra/netG_A2B.pth --cuda
@@ -138,12 +142,6 @@ $ python3 train.py --dataset horse2zebra \
     --netD_A weights/horse2zebra/netD_A_epoch_100.pth \
     --netD_B weights/horse2zebra/netD_B_epoch_100.pth --cuda
 ```
-
-### Contributing
-
-If you find a bug, create a GitHub issue, or even better, submit a pull request. Similarly, if you have questions, simply post them as GitHub issues.   
-
-I look forward to seeing what the community does with these models! 
 
 ### Credit
 
