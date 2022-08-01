@@ -1,245 +1,380 @@
-import sys
-import random
-from PySide6 import QtCore, QtWidgets, QtGui
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-
-
-# class Window(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.title = 'Style Transfer'
-#         self.top = 100
-#         self.left = 100
-#         self.width = 680
-#         self.height = 500
-#         self.opening_frame()
-#
-#     def opening_frame(self):
-#         self.setWindowTitle(self.title)
-#         self.setGeometry(self.top, self.left, self.width, self.height)
-#
-#         button_window1 = QPushButton("Let's Start", self)
-#         button_window1.move(100, 100)
-#         button_window1.clicked.connect(self.button_let_start_on_click)
-#         self.lineEdit1 = QLineEdit("Type here what you want to transfer for [Window1].", self)
-#         self.lineEdit1.setGeometry(250, 100, 400, 30)
-#
-#         buttonWindow2 = QPushButton('Window2', self)
-#         buttonWindow2.move(100, 200)
-#         buttonWindow2.clicked.connect(self.button_upload_on_click)
-#         self.lineEdit2 = QLineEdit("Type here what you want to transfer for [Window2].", self)
-#         self.lineEdit2.setGeometry(250, 200, 400, 30)
-#         self.show()
-#
-#     @pyqtSlot()
-#     def button_let_start_on_click(self):
-#         self.statusBar().showMessage("Switched to window 1")
-#         self.cams = Window1(self.lineEdit1.text())
-#         self.cams.show()
-#         self.close()
-#
-#     @pyqtSlot()
-#     def button_upload_on_click(self):
-#         self.statusBar().showMessage("Switched to window 2")
-#         self.cams = Window2(self.lineEdit2.text())
-#         self.cams.show()
-#         self.close()
-
-
-class StartWindow(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-        self.title = 'Style Transfer'
-        self.top = 100
-        self.left = 100
-        self.width = 800
-        self.height = 600
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.top, self.left, self.width, self.height)
-
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        self.start_button = QtWidgets.QPushButton("Let's Start")
-        self.text = QtWidgets.QLabel('Welcome to the Style Transfer application!!!', alignment=QtCore.Qt.AlignCenter)
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.start_button)
-
-        self.start_button.clicked.connect(self.button_let_start_on_click)
-
-    @QtCore.Slot()
-    def button_let_start_on_click(self):
-        # self.statusBar().showMessage("Switched to window 1")
-        self.cams = Window1("wi")
-        self.cams.show()
-        self.close()
-
-
-class Window1(QDialog):
-    def __init__(self, value, parent=None):
-        super().__init__(parent)
-        self.title = 'Style Transfer'
-        self.top = 100
-        self.left = 100
-        self.width = 800
-        self.height = 600
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.top, self.left, self.width, self.height)
-
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        self.start_button = QtWidgets.QPushButton("Let's Start")
-        self.text = QtWidgets.QLabel('Welcome to the Style Transfer application!!!', alignment=QtCore.Qt.AlignCenter)
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.start_button)
-
-        self.start_button.clicked.connect(self.button_let_start_on_click)
-
-    def button_upload_image_on_click(self):
-        self.cams = StartWindow()
-        self.cams.show()
-        self.close()
-
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
-
-    start_window = StartWindow()
-    start_window.show()
-
-    sys.exit(app.exec())
-
 # import sys
-# from PyQt5.QtGui import *
-# from PyQt5.QtCore import *
-# from PyQt5.QtWidgets import *
+# from PyQt5 import QtCore, QtWidgets
+#
+# TOP = 100
+# LEFT = 100
+# WIDTH = 800
+# HEIGHT = 600
+#
+# NAME = 'Style Transfer'
 #
 #
-# class Window(QMainWindow):
+# class Controller:
+#
 #     def __init__(self):
-#         super().__init__()
-#         self.title = "App"
-#         self.top = 100
-#         self.left = 100
-#         self.width = 680
-#         self.height = 500
-#         self.opening_frame()
+#         self.start_window = StartWindow()
+#         self.upload_window = UploadWindow()
+#         self.results_window = ResultsWindow()
+#         self.finish_window = FinishWindow()
 #
-#     def opening_frame(self):
-#         self.setWindowTitle(self.title)
-#         self.setGeometry(self.top, self.left, self.width, self.height)
+#     def show_start_window(self):
+#         self.start_window.switch_window.connect(self.show_upload_window)
+#         self.start_window.show()
 #
-#         label1 = QLabel('Welcome to the Style Transfer application!!!')
+#     def show_upload_window(self):
+#         self.upload_window.switch_window.connect(self.show_results_window)
+#         self.start_window.close()
+#         self.upload_window.show()
 #
-#         layoutV = QVBoxLayout()
-#         button_window1 = QPushButton("Let's Start", self)
-#         button_window1.move(100, 100)
-#         # button_window1.setStyleSheet('background-color: rgb(0,0,255); color: #fff')
-#         # button_window1.setText("Let's Start")
-#         button_window1.clicked.connect(self.button_let_start_on_click)
-#         layoutV.addWidget(button_window1)
+#     def show_results_window(self):
+#         self.results_window.switch_window.connect(self.show_finish_window)
+#         self.upload_window.close()
+#         self.results_window.show()
 #
-#         layoutH = QHBoxLayout()
-#         layoutH.addWidget(label1)
-#         layoutH.addWidget(button_window1)
-#         layoutV.addLayout(layoutH)
-#         self.setLayout(layoutV)
+#     def show_finish_window(self):
+#         self.finish_window = FinishWindow()
+#         self.results_window.close()
+#         self.finish_window.show()
 #
 #
-#         #
-#         # buttonWindow1.move(100, 100)
-#         # buttonWindow1.clicked.connect(self.button_let_start_on_click)
-#         # self.lineEdit1 = QLineEdit("Type here what you want to transfer for [Window1].", self)
-#         # self.lineEdit1.setGeometry(250, 100, 400, 30)
-#         #
-#         # buttonWindow2 = QPushButton('Window2', self)
-#         # buttonWindow2.move(100, 200)
-#         # buttonWindow2.clicked.connect(self.button_upload_on_click)
-#         # self.lineEdit2 = QLineEdit("Type here what you want to transfer for [Window2].", self)
-#         # self.lineEdit2.setGeometry(250, 200, 400, 30)
-#         # self.show()
+# class StartWindow(QtWidgets.QWidget):
+#     switch_window = QtCore.pyqtSignal()
 #
-#     @pyqtSlot()
+#     def __init__(self):
+#         QtWidgets.QWidget.__init__(self)
+#         self.setWindowTitle(NAME)
+#         self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
+#
+#         # font
+#         font = self.font()
+#         font.setPointSize(12)
+#
+#         self.layout = QtWidgets.QGridLayout()
+#
+#         # Button Text
+#         self.start_button = QtWidgets.QPushButton("Let's Start")
+#         self.start_button.setFont(font)
+#         self.start_button.clicked.connect(self.button_let_start_on_click)
+#         self.setLayout(self.layout)
+#
+#         font.setPointSize(18)
+#
+#         # Application Text
+#         self.text = QtWidgets.QLabel('Welcome to the Style Transfer application!!!', self)
+#         self.text.setAlignment(QtCore.Qt.AlignCenter)
+#         self.text.setFont(font)
+#         self.layout.addWidget(self.text)
+#         self.layout.addWidget(self.start_button)
+#
 #     def button_let_start_on_click(self):
-#         self.statusBar().showMessage("Switched to window 1")
-#         self.cams = Window1(self.lineEdit1.text())
-#         self.cams.show()
-#         self.close()
-#
-#     @pyqtSlot()
-#     def button_upload_on_click(self):
-#         self.statusBar().showMessage("Switched to window 2")
-#         self.cams = Window2(self.lineEdit2.text())
-#         self.cams.show()
-#         self.close()
+#         self.switch_window.emit()
 #
 #
-# class Window1(QDialog):
-#     def __init__(self, value, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle('Window1')
-#         self.setWindowIcon(self.style().standardIcon(QStyle.SP_FileDialogInfoView))
+# class UploadWindow(QtWidgets.QWidget):
+#     switch_window = QtCore.pyqtSignal(str)
 #
-#         label1 = QLabel(value)
-#         self.button = QPushButton()
-#         self.button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-#         self.button.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
-#         self.button.setIconSize(QSize(200, 200))
+#     def __init__(self):
+#         QtWidgets.QWidget.__init__(self)
+#         self.setWindowTitle(NAME)
+#         self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
 #
-#         layoutV = QVBoxLayout()
-#         self.pushButton = QPushButton(self)
-#         self.pushButton.setStyleSheet('background-color: rgb(0,0,255); color: #fff')
-#         self.pushButton.setText('Click me!')
-#         self.pushButton.clicked.connect(self.goMainWindow)
-#         layoutV.addWidget(self.pushButton)
+#         # font
+#         font = self.font()
+#         font.setPointSize(12)
 #
-#         layoutH = QHBoxLayout()
-#         layoutH.addWidget(label1)
-#         layoutH.addWidget(self.button)
-#         layoutV.addLayout(layoutH)
-#         self.setLayout(layoutV)
+#         self.layout = QtWidgets.QGridLayout()
 #
-#     def goMainWindow(self):
-#         self.cams = Window()
-#         self.cams.show()
-#         self.close()
+#         # Button Text
+#         self.convert_button = QtWidgets.QPushButton("Convert Button")
+#         self.convert_button.setFont(font)
+#         self.convert_button.clicked.connect(self.convert_button_on_click)
+#         self.setLayout(self.layout)
+#
+#         font.setPointSize(11)
+#
+#         # Application Text
+#         self.text = QtWidgets.QLabel("Let's Choose Your Image To Transform", self)
+#         self.text.setAlignment(QtCore.Qt.AlignTop)
+#         self.text.setFont(font)
+#         self.layout.addWidget(self.text)
+#         self.layout.addWidget(self.convert_button)
+#
+#         # QtWidgets.QWidget.__init__(self)
+#         # self.setWindowTitle(NAME)
+#         # self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
+#         #
+#         # self.layout = QtWidgets.QGridLayout()
+#         #
+#         # # font
+#         # font = self.font()
+#         # font.setPointSize(10)
+#         #
+#         # # Application Text
+#         # self.text = QtWidgets.QLabel("Let's Choose Your Image To Transform", self)
+#         # self.text.setAlignment(QtCore.Qt.AlignTop)
+#         # self.text.setFont(font)
+#         # self.layout.addWidget(self.text)
+#         # # self.layout.addWidget(self.start_button)
+#         #
+#         # # # Upload Button Text
+#         # # font.setPointSize(11)
+#         # # self.upload_button = QtWidgets.QPushButton("Upload Button")
+#         # # self.upload_button.setFont(font)
+#         # # self.upload_button.clicked.connect(self.upload_button_on_click)
+#         # # self.setLayout(self.layout)
+#         # # self.layout.addWidget(self.upload_button)
+#         # #
+#         # # # Choose from sample Button Text
+#         # # font.setPointSize(11)
+#         # # self.choose_button = QtWidgets.QPushButton("Choose Button")
+#         # # self.choose_button.setFont(font)
+#         # # self.choose_button.clicked.connect(self.choose_button_on_click)
+#         # # self.setLayout(self.layout)
+#         # # self.layout.addWidget(self.choose_button)
+#         #
+#         # # Convert Button Text
+#         # font.setPointSize(11)
+#         # self.convert_button = QtWidgets.QPushButton("Convert Button")
+#         # self.convert_button.setFont(font)
+#         # self.convert_button.clicked.connect(self.convert_button_on_click)
+#         # self.setLayout(self.layout)
+#         # self.layout.addWidget(self.convert_button)
+#         #
+#         # # self.line_edit = QtWidgets.QLineEdit()
+#         # # self.layout.addWidget(self.line_edit)
+#         #
+#         # # self.button = QtWidgets.QPushButton('Switch Window')
+#         # # self.button.clicked.connect(self.switch)
+#         # # self.layout.addWidget(self.button)
+#         # #
+#         # self.setLayout(self.layout)
+#
+#     def convert_button_on_click(self):
+#         self.switch_window.emit()
+#
+#     def choose_button_on_click(self):
+#         pass
+#         # self.switch_window.emit()
+#
+#     def upload_button_on_click(self):
+#         pass
+#         # self.switch_window.emit()
 #
 #
-# class Window2(QDialog):
-#     def __init__(self, value, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle('Window2')
-#         self.setWindowIcon(self.style().standardIcon(QStyle.SP_FileDialogInfoView))
+# class ResultsWindow(QtWidgets.QWidget):
+#     switch_window = QtCore.pyqtSignal()
 #
-#         label1 = QLabel(value)
-#         self.button = QPushButton()
-#         self.button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-#         self.button.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
-#         self.button.setIconSize(QSize(200, 200))
+#     def __init__(self, text=None):
+#         QtWidgets.QWidget.__init__(self)
+#         self.setWindowTitle(NAME)
+#         self.finish = False
 #
-#         layoutV = QVBoxLayout()
-#         self.pushButton = QPushButton(self)
-#         self.pushButton.setStyleSheet('background-color: rgb(0,0,255); color: #fff')
-#         self.pushButton.setText('Click me!')
-#         self.pushButton.clicked.connect(self.goMainWindow)
-#         layoutV.addWidget(self.pushButton)
+#         layout = QtWidgets.QGridLayout()
 #
-#         layoutH = QHBoxLayout()
-#         layoutH.addWidget(label1)
-#         layoutH.addWidget(self.button)
-#         layoutV.addLayout(layoutH)
-#         self.setLayout(layoutV)
+#         self.label = QtWidgets.QLabel(text)
+#         layout.addWidget(self.label)
 #
-#     def goMainWindow(self):
-#         self.cams = Window()
-#         self.cams.show()
-#         self.close()
+#         self.button = QtWidgets.QPushButton('Close')
+#         self.button.clicked.connect(self.close)
+#
+#         layout.addWidget(self.button)
+#
+#         self.setLayout(layout)
+#
+#     def is_finish(self):
+#         return self.finish
+#
+#
+# class FinishWindow(QtWidgets.QWidget):
+#
+#     def __init__(self, text=None):
+#         QtWidgets.QWidget.__init__(self)
+#         self.setWindowTitle(NAME)
+#         self.finish = False
+#
+#         layout = QtWidgets.QGridLayout()
+#
+#         self.label = QtWidgets.QLabel(text)
+#         layout.addWidget(self.label)
+#
+#         self.button = QtWidgets.QPushButton('Close')
+#         self.button.clicked.connect(self.close)
+#
+#         layout.addWidget(self.button)
+#
+#         self.setLayout(layout)
+#
+#
+# def main():
+#     app = QtWidgets.QApplication(sys.argv)
+#     controller = Controller()
+#     controller.show_start_window()
+#     sys.exit(app.exec_())
 #
 #
 # if __name__ == '__main__':
-#     app = QApplication(sys.argv)
-#     ex = Window()
-#     sys.exit(app.exec_())
+#     main()
+#
+#
+
+
+import sys
+from PyQt5 import QtCore, QtWidgets
+
+
+class WindowTwo(QtWidgets.QWidget):
+
+    def __init__(self, text):
+        QtWidgets.QWidget.__init__(self)
+        self.setWindowTitle('Window Two')
+
+        layout = QtWidgets.QGridLayout()
+
+        self.label = QtWidgets.QLabel(text)
+        layout.addWidget(self.label)
+
+        self.button = QtWidgets.QPushButton('Close')
+        self.button.clicked.connect(self.close)
+
+        layout.addWidget(self.button)
+
+        self.setLayout(layout)
+
+
+TOP = 100
+LEFT = 100
+WIDTH = 800
+HEIGHT = 600
+
+NAME = 'Style Transfer'
+
+
+class Controller:
+
+    def __init__(self):
+        self.start_window = StartWindow()
+        self.upload_window = UploadWindow()
+        # self.results_window = ResultsWindow()
+        # self.finish_window = FinishWindow()
+
+    def show_start_window(self):
+        self.start_window.switch_window.connect(self.show_upload_window)
+        self.start_window.show()
+
+    def show_upload_window(self):
+        self.upload_window.switch_window.connect(self.show_results_window)
+        self.start_window.close()
+        self.upload_window.show()
+
+    def show_results_window(self, text):
+        self.window_two = WindowTwo(text)
+        self.upload_window.close()
+        self.window_two.show()
+
+    # def show_results_window(self):
+    #     self.results_window.switch_window.connect(self.show_finish_window)
+    #     self.upload_window.close()
+    #     self.results_window.show()
+    #
+    # def show_finish_window(self):
+    #     self.finish_window = FinishWindow()
+    #     self.results_window.close()
+    #     self.finish_window.show()
+
+
+class StartWindow(QtWidgets.QWidget):
+    switch_window = QtCore.pyqtSignal()
+
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.setWindowTitle(NAME)
+        self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
+
+        # font
+        font = self.font()
+        font.setPointSize(12)
+
+        self.layout = QtWidgets.QGridLayout()
+
+        # Button Text
+        self.start_button = QtWidgets.QPushButton("Let's Start")
+        self.start_button.setFont(font)
+        self.start_button.clicked.connect(self.button_let_start_on_click)
+        self.setLayout(self.layout)
+
+        font.setPointSize(18)
+
+        # Application Text
+        self.text = QtWidgets.QLabel('Welcome to the Style Transfer application!!!', self)
+        self.text.setAlignment(QtCore.Qt.AlignCenter)
+        self.text.setFont(font)
+        self.layout.addWidget(self.text)
+        self.layout.addWidget(self.start_button)
+
+    def button_let_start_on_click(self):
+        self.switch_window.emit()
+
+
+class UploadWindow(QtWidgets.QWidget):
+    switch_window = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.setWindowTitle(NAME)
+        self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
+
+        self.layout = QtWidgets.QGridLayout()
+
+        # font
+        font = self.font()
+        font.setPointSize(10)
+
+        # Application Text
+        self.text = QtWidgets.QLabel("Let's Choose Your Image To Transform", self)
+        self.text.setAlignment(QtCore.Qt.AlignTop)
+        self.text.setFont(font)
+        self.layout.addWidget(self.text)
+
+        # Upload Button Text
+        font.setPointSize(11)
+        self.upload_button = QtWidgets.QPushButton("Upload Button")
+        self.upload_button.setFont(font)
+        self.upload_button.clicked.connect(self.upload_button_on_click)
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.upload_button)
+
+        # Choose from sample Button Text
+        font.setPointSize(11)
+        self.choose_button = QtWidgets.QPushButton("Choose Button")
+        self.choose_button.setFont(font)
+        self.choose_button.clicked.connect(self.choose_button_on_click)
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.choose_button)
+
+        # Button Text
+        self.convert_button = QtWidgets.QPushButton("Convert Button")
+        self.convert_button.setFont(font)
+        self.convert_button.clicked.connect(self.convert_button_on_click)
+        self.layout.addWidget(self.convert_button)
+
+        self.setLayout(self.layout)
+
+    def convert_button_on_click(self):
+        self.switch_window.emit("resu")
+
+    def choose_button_on_click(self):
+        pass
+
+    def upload_button_on_click(self):
+        pass
+
+
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    controller = Controller()
+    controller.show_start_window()
+    sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()
