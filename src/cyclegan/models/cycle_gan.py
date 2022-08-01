@@ -53,43 +53,39 @@ class CycleGAN(BaseModel):
             self.discriminator_A.apply(weights_init)
             self.discriminator_B.apply(weights_init)
 
-    def identity_loss(self, discriminator: Discriminator, optimizer, real_image: torch.Tensor,
-                      fake_image: torch.Tensor) -> torch.Tensor:
+    def identity_loss(self, generator: Generator, inverse_generator: Generator, real_image_A: torch.Tensor,
+                      real_image_B: torch.Tensor) -> torch.Tensor:
         """
         The identity loss is computed by comparing the output of the discriminator against real and fake images with
         known labels. Only affects the discriminator.
         :return: Loss value
         """
         self.switch_mode()
-        # Real
-        real_pred = discriminator(real_image).to(self.device)
-        loss_real = self.identity_loss_func(real_pred,
-                                            torch.full(real_pred.shape, 1, device=self.device).to(torch.float32))
-        # Fake
-        fake_image = fake_image.to(self.device)
-        fake_pred = discriminator(fake_image)
-        loss_fake = self.identity_loss_func(fake_pred,
-                                            torch.full(real_pred.shape, 0, device=self.device).to(torch.float32))
 
-        # Compute the loss
-        loss = (loss_fake + loss_real)
+        loss = self.identity_loss_func(inverse_generator(real_image_B), real_image_B) + self.identity_loss_func(
+            generator(real_image_A), real_image_A)
+
         loss.backward()
-        optimizer.step()
         return loss
 
-    def adversarial_loss(self, generator: Generator, discriminator: Discriminator, optimizer,
-                         real: torch.Tensor) -> torch.Tensor:
+    def adversarial_loss(self, discriminator: Discriminator, optimizer,
+                         real: torch.Tensor, fake: torch.Tensor) -> torch.Tensor:
         """
         The adversarial loss affects the generator. Its goal is to minimize the loss of the discriminator given an
         input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
         self.switch_mode()
-        fake = generator(real).to(self.device)
+
         disc_prediction = discriminator(fake)
         disc_loss = self.adversarial_loss_func(disc_prediction,
                                                torch.full(disc_prediction.shape, 1, device=self.device).to(
                                                    torch.float32))
+        disc_prediction = discriminator(real)
+        disc_loss_real = self.adversarial_loss_func(disc_prediction,
+                                                    torch.full(disc_prediction.shape, 1, device=self.device).to(
+                                                        torch.float32))
+        disc_loss += disc_loss_real
         disc_loss.backward()
 
         optimizer.step()
@@ -148,31 +144,25 @@ class CycleGAN(BaseModel):
         self.discB_optim.zero_grad()
 
         #########################################################
-        # Update the generators with CycleGAN and Adversarial   #
+        # Update the generators with CycleGAN and Identity      #
         #########################################################
         # self.discriminator_A.set_requires_grad(False)
         # self.discriminator_B.set_requires_grad(False)
 
-        # Adversarial loss
-        losses["genA2B_adversarial"] = self.adversarial_loss(self.generator_A2B, self.discriminator_B,
-                                                             self.genA2B_optim, real_imageA)
-        losses["genB2A_adversarial"] = self.adversarial_loss(self.generator_B2A, self.discriminator_A,
-                                                             self.genB2A_optim, real_imageB)
+        # Identity loss
+        losses["identity"] = self.identity_loss(self.generator_A2B, self.generator_B2A, real_imageA, real_imageB)
+
         # Cycle GAN loss
         losses["cycle_loss"] = self.cycle_loss(real_imageA, real_imageB)
 
         #####################################################
-        # Update the discriminators using Identity loss     #
+        # Update the discriminators using adversarial loss  #
         #####################################################
-        # self.discriminator_A.set_requires_grad(True)
-        # self.discriminator_B.set_requires_grad(True)
 
         fake_imageA = self.generator_B2A.last_generated.pop().detach()
-        losses["discA_identity"] = self.identity_loss(self.discriminator_A, self.discA_optim, real_imageA,
-                                                      fake_imageA)
-
-        fake_imageB = self.generator_A2B.last_generated.pop().detach()
-        losses["discB_identity"] = self.identity_loss(self.discriminator_B, self.discB_optim, real_imageB,
-                                                      fake_imageB)
+        losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA,
+                                                            self.generator_B2A.last_generated.pop())
+        losses["discB_adversarial"] = self.adversarial_loss(self.discriminator_B, self.discB_optim, real_imageB,
+                                                            self.generator_A2B.last_generated.pop())
 
         return losses
