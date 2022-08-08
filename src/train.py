@@ -25,7 +25,7 @@ def arguments_parsing():
     parser.add_argument("--epochs", default=200, type=int, metavar="N",
                         help="number of total epochs to run")
     parser.add_argument("--decay_epochs", type=int, default=100,
-                        help="epoch to start linearly decaying the learning rate to 0. (default:100)")
+                        help="In each N epochs, the LR will decrease by 0.1")
     parser.add_argument("-b", "--batch-size", default=1, type=int,
                         metavar="N",
                         help="mini-batch size (default: 1), this is the total "
@@ -138,12 +138,12 @@ def save_checkpoint(cycle_gan: CycleGAN, epoch_idx: int, batch_idx: int, run):
     run.log_artifact(artifact)
 
 
-def load_checkpoint(model: CycleGAN, run) -> tuple:
+def load_checkpoint(model: CycleGAN, run, device) -> tuple:
     # checkpoint = torch.load(wandb.restore(path))
     artifact = run.use_artifact('cycle_gan_model:latest', type='model')
     artifact.download(root="artifacts")
 
-    checkpoint = torch.load(os.path.join("artifacts", "cycle_gan.pth"))
+    checkpoint = torch.load(os.path.join("artifacts", "cycle_gan.pth"), map_location=device)
 
     # Loading sub-models
     model.generator_A2B.load_state_dict(checkpoint.genA2B)
@@ -152,8 +152,7 @@ def load_checkpoint(model: CycleGAN, run) -> tuple:
     model.discriminator_B.load_state_dict(checkpoint.discB)
 
     # Loading optimizers for each model
-    model.genA2B_optim.load_state_dict(checkpoint.genA2B_optim)
-    model.genB2A_optim.load_state_dict(checkpoint.genB2A_optim)
+    model.gen_optim.load_state_dict(checkpoint.gen_optim)
     model.discA_optim.load_state_dict(checkpoint.discA_optim)
     model.discB_optim.load_state_dict(checkpoint.discB_optim)
 
@@ -203,10 +202,11 @@ def train(args, device, run):
     dataloader = init_dataset(args)
     latest_model = -1
 
-    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device, latest_model)
+    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device, latest_model,
+                               args.decay_epochs)
 
     if args.continue_training:
-        last_epoch, last_batch = load_checkpoint(args.model_path, cycle_gan_model, run)
+        last_epoch, last_batch = load_checkpoint(cycle_gan_model, run, device)
     else:
         last_epoch = 0
 
@@ -214,7 +214,8 @@ def train(args, device, run):
         progress_bar = tqdm(dataloader, desc="Epoch {}".format(epoch_idx))
         for batch_idx, batch in enumerate(progress_bar):
             progress_bar.set_description(
-                "Epoch ({}/{}) Batch ({}/{})".format(epoch_idx, args.epochs, batch_idx, len(dataloader)))
+                "Epoch ({}/{}) Batch ({}/{}): LR={}".format(epoch_idx, args.epochs, batch_idx, len(dataloader),
+                                                            cycle_gan_model.gen_optim.param_groups[0]['lr']))
 
             image_A, image_B = batch["A"], batch["B"]
             image_A = image_A.to(device)

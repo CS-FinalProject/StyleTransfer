@@ -64,8 +64,8 @@ def init_dataset(args) -> torch.utils.data.DataLoader:
 
 
 def create_and_load_model(args, device, run) -> CycleGAN:
-    model = CycleGAN(0.02, 0, True, device, 0)
-    load_checkpoint(model, run)
+    model = CycleGAN(0.02, 0, True, device, 0, 0)
+    load_checkpoint(model, run, device)
 
     # Set model mode
     model.generator_A2B.eval()

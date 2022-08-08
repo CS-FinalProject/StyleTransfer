@@ -69,7 +69,6 @@ class Checkpoint:
         self.discA = model.discriminator_A.state_dict()
         self.discB = model.discriminator_B.state_dict()
 
-        self.genA2B_optim = model.genA2B_optim.state_dict()
-        self.genB2A_optim = model.genB2A_optim.state_dict()
+        self.gen_optim = model.gen_optim.state_dict()
         self.discA_optim = model.discA_optim.state_dict()
         self.discB_optim = model.discB_optim.state_dict()

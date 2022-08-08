@@ -3,21 +3,25 @@ import os
 import torch.nn as nn
 import torch
 from os import path
+from itertools import chain
 
 from cyclegan.utils import *
 
 from .generator import Generator
 from .discriminator import Discriminator
 from .base_model import BaseModel
+from .losses import AdversarialLossFunction
+from .. import weights_init
 
 
 class CycleGAN(BaseModel):
-    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device, counter: int):
+    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device, counter: int, decay_epoch: int):
         super().__init__()
 
         self.lambda_param = lambda_param
         self.device = device
         self.counter = counter
+        self.decay_epoch = decay_epoch
 
         # Define the generators and discriminators
         self.generator_A2B = Generator().to(device)
@@ -28,22 +32,21 @@ class CycleGAN(BaseModel):
         self.init_models(continue_learning)
         # Define the loss functions
         self.identity_loss_func = torch.nn.L1Loss()
-        self.adversarial_loss_func = torch.nn.MSELoss()
+        self.adversarial_loss_func = AdversarialLossFunction()
         self.cycle_loss_func = torch.nn.MSELoss()
 
         ##############
         # Optimizers #
         ##############
-        self.genA2B_optim = torch.optim.Adam(self.generator_A2B.parameters(), lr=lr)
-        self.genB2A_optim = torch.optim.Adam(self.generator_B2A.parameters(), lr=lr)
+        self.gen_optim = torch.optim.Adam(chain(self.generator_A2B.parameters(), self.generator_B2A.parameters()),
+                                          lr=lr)
         self.discA_optim = torch.optim.Adam(self.discriminator_A.parameters(), lr=lr)
         self.discB_optim = torch.optim.Adam(self.discriminator_B.parameters(), lr=lr)
 
         # Defining Decay LR - Gradually changing the LR
-        self.genA2B_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.genA2B_optim, gamma=0.5)
-        self.genB2A_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.genB2A_optim, gamma=0.5)
-        self.discA_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discA_optim, gamma=0.5)
-        self.discB_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discB_optim, gamma=0.5)
+        self.gen_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.gen_optim, step_size=decay_epoch, gamma=0.1)
+        self.discA_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discA_optim, step_size=decay_epoch, gamma=0.1)
+        self.discB_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discB_optim, step_size=decay_epoch, gamma=0.1)
 
     def init_models(self, cont: bool) -> None:
         # Load the latest models if we want to continue learning
@@ -53,8 +56,7 @@ class CycleGAN(BaseModel):
             self.discriminator_A.apply(weights_init)
             self.discriminator_B.apply(weights_init)
 
-    def identity_loss(self, generator: Generator, inverse_generator: Generator, real_image_A: torch.Tensor,
-                      real_image_B: torch.Tensor) -> torch.Tensor:
+    def identity_loss(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor) -> tuple:
         """
         The identity loss is computed by comparing the output of the discriminator against real and fake images with
         known labels. Only affects the discriminator.
@@ -62,53 +64,60 @@ class CycleGAN(BaseModel):
         """
         self.switch_mode()
 
-        loss = self.identity_loss_func(inverse_generator(real_image_B), real_image_B) + self.identity_loss_func(
-            generator(real_image_A), real_image_A)
+        identity_A2B = self.identity_loss_func(self.generator_A2B(real_image_B), real_image_B)
+        identity_B2A = self.identity_loss_func(self.generator_B2A(real_image_A), real_image_A)
+
+        loss = (identity_A2B + identity_B2A) * self.lambda_param / 2
 
         loss.backward()
-        return loss
+        return identity_A2B, identity_B2A
 
     def adversarial_loss(self, discriminator: Discriminator, optimizer,
                          real: torch.Tensor, fake: torch.Tensor) -> torch.Tensor:
         """
-        The adversarial loss affects the generator. Its goal is to minimize the loss of the discriminator given an
-        input from the generator, intuitively, to trick the generator.
+        The adversarial loss affects the generator and the discriminator. Its goal is to minimize the loss of the
+        discriminator given an input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
         self.switch_mode()
 
-        disc_prediction = discriminator(fake)
-        disc_loss = self.adversarial_loss_func(disc_prediction,
-                                               torch.full(disc_prediction.shape, 1, device=self.device).to(
-                                                   torch.float32))
-        disc_prediction = discriminator(real)
-        disc_loss_real = self.adversarial_loss_func(disc_prediction,
-                                                    torch.full(disc_prediction.shape, 1, device=self.device).to(
-                                                        torch.float32))
-        disc_loss += disc_loss_real
-        disc_loss.backward()
+        # disc_prediction_real = discriminator(real)
+        # disc_loss_real = self.adversarial_loss_func(disc_prediction_real,
+        #                                             torch.full(disc_prediction_real.shape, 1, device=self.device).to(
+        #                                                 torch.float32))
+        #
+        # disc_prediction_fake = discriminator(fake)
+        # disc_loss_fake = self.adversarial_loss_func(disc_prediction_fake,
+        #                                             torch.full(disc_prediction_fake.shape, 1, device=self.device).to(
+        #                                                 torch.float32))
+        # disc_loss = disc_loss_real + disc_loss_fake
+        # disc_loss.backward()
 
+        adversarial = self.adversarial_loss_func(discriminator(real), discriminator(fake))
+        adversarial.backward()
         optimizer.step()
-        return disc_loss
+        return adversarial
 
     def forward_cycle_loss(self, generator: Generator, inv_generator: Generator, optimizer,
                            real: torch.Tensor) -> torch.Tensor:
         self.switch_mode()
+
         fake_image = generator(real).to(self.device)
         converted_back = inv_generator(fake_image).to(self.device)
+
         loss = self.cycle_loss_func(converted_back, real)
         loss.backward()
 
         optimizer.step()
         return loss
 
-    def cycle_loss(self, realA: torch.Tensor, realB: torch.Tensor) -> torch.Tensor:
+    def cycle_loss(self, realA: torch.Tensor, realB: torch.Tensor) -> tuple:
         self.switch_mode()
-        forward_loss = self.forward_cycle_loss(self.generator_A2B, self.generator_B2A, self.genA2B_optim,
+        forward_loss = self.forward_cycle_loss(self.generator_A2B, self.generator_B2A, self.gen_optim,
                                                realA) * self.lambda_param
-        backward_loss = self.forward_cycle_loss(self.generator_B2A, self.generator_A2B, self.genB2A_optim,
+        backward_loss = self.forward_cycle_loss(self.generator_B2A, self.generator_A2B, self.gen_optim,
                                                 realB) * self.lambda_param
-        return forward_loss + backward_loss
+        return forward_loss, backward_loss
 
     def forward(self, image: torch.Tensor, is_inverse: bool = True):
         self.switch_mode()
@@ -130,42 +139,43 @@ class CycleGAN(BaseModel):
             self.discriminator_A.train()
 
     def step_lr_schedulers(self):
-        self.genA2B_lr_scheduler.step()
-        self.genB2A_lr_scheduler.step()
+        self.gen_lr_scheduler.step()
         self.discA_lr_scheduler.step()
         self.discB_lr_scheduler.step()
 
     def train_model(self, real_imageA: torch.Tensor, real_imageB: torch.Tensor) -> dict:
         losses = dict()
 
-        self.genA2B_optim.zero_grad()
-        self.genB2A_optim.zero_grad()
-        self.discA_optim.zero_grad()
-        self.discB_optim.zero_grad()
+        self.gen_optim.zero_grad()
 
         #########################################################
         # Update the generators with CycleGAN and Identity      #
         #########################################################
-        # self.discriminator_A.set_requires_grad(False)
-        # self.discriminator_B.set_requires_grad(False)
+        self.discriminator_A.set_requires_grad(False)
+        self.discriminator_B.set_requires_grad(False)
 
         # Identity loss
-        losses["identity"] = self.identity_loss(self.generator_A2B, self.generator_B2A, real_imageA, real_imageB)
+        losses["identity_A2B"], losses["identity_B2A"] = self.identity_loss(real_imageA, real_imageB)
 
         # Cycle GAN loss
-        losses["cycle_loss"] = self.cycle_loss(real_imageA, real_imageB)
+        losses["cycle_A2B"], losses["cycle_B2A"] = self.cycle_loss(real_imageA, real_imageB)
 
         #####################################################
         # Update the discriminators using adversarial loss  #
         #####################################################
+        self.discA_optim.zero_grad()
+        self.discB_optim.zero_grad()
 
-        fake_imageA = self.generator_B2A.last_generated.pop().detach()
+        self.discriminator_A.set_requires_grad(True)
+        self.discriminator_B.set_requires_grad(True)
+
         losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA,
                                                             self.generator_B2A.last_generated.pop().detach())
         losses["discB_adversarial"] = self.adversarial_loss(self.discriminator_B, self.discB_optim, real_imageB,
                                                             self.generator_A2B.last_generated.pop().detach())
 
-        self.genA2B_optim.step()
-        self.genB2A_optim.step()
+        self.discA_optim.step()
+        self.discB_optim.step()
+        self.gen_optim.step()
 
         return losses

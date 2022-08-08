@@ -11,6 +11,7 @@ dataset/
 venv/
 models/
 src/artifacts/
+artifacts/
 
 # Distribution / packaging
 .Python
