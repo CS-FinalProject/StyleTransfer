@@ -17,8 +17,8 @@ parser = argparse.ArgumentParser(
     description="Style Transfer")
 parser.add_argument("--file", type=str,
                     help="Image name. (default:`assets/horse.png`)")
-parser.add_argument("--model-name", type=str,
-                    help="dataset name.  (default:`weights/horse2zebra/netG_A2B.pth`).")
+parser.add_argument("--model-path", type=str,
+                    help="Path to a model file, if wanted from a specific model")
 parser.add_argument("--cuda", action="store_true", help="Enables cuda")
 parser.add_argument("--image-size", type=int, default=256,
                     help="size of the data crop (squared assumed). (default:256)")
@@ -45,9 +45,11 @@ if torch.cuda.is_available() and not args.cuda:
 device = torch.device("cuda:0" if args.cuda else "cpu")
 
 # create model
-model = CycleGAN(0, 0, True, device, 0)
+model = CycleGAN(0, 0, True, device, 0, 0)
 
-load_checkpoint(model, run)
+load_checkpoint(model, run, device)
+
+model = model.to(device)
 
 # Set model mode
 model.eval()
