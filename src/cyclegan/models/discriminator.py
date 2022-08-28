@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .base_model import BaseModel
+from .base_model import *
 
 
 class Discriminator(BaseModel):
@@ -15,23 +15,28 @@ class Discriminator(BaseModel):
     def __init__(self, in_feature: int = 3, out_feacher: int = 64):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_feature, out_channels=out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=in_feature, out_channels=out_feacher,
+                      kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher,
+                      kernel_size=4, stride=2, padding=1, bias=False),
             nn.InstanceNorm2d(2 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=2 * out_feacher, out_channels=4 * out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=2 * out_feacher, out_channels=4 *
+                      out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
             nn.InstanceNorm2d(4 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=4 * out_feacher, out_channels=8 * out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=4 * out_feacher, out_channels=8 *
+                      out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
             nn.InstanceNorm2d(8 * out_feacher),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=8 * out_feacher, out_channels=1, kernel_size=4, stride=1, padding=0, bias=False),
-            nn.Sigmoid()
+            nn.Conv2d(in_channels=8 * out_feacher, out_channels=1,
+                      kernel_size=4, stride=1, padding=0, bias=False),
+            # nn.Sigmoid()
         )
 
     def forward(self, image):

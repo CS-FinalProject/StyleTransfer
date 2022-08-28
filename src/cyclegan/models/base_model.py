@@ -1,4 +1,5 @@
 import torch.nn as nn
+from utils import IMAGE_SIZE
 
 
 class BaseModel(nn.Module):

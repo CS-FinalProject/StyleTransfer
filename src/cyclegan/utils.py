@@ -16,7 +16,7 @@ import random
 
 import torch
 
-IMAGE_SIZE = 64
+IMAGE_SIZE = 128
 
 paths = {
     "genA2B": os.path.join("models", "genA2B"),
@@ -28,7 +28,8 @@ paths = {
 
 class ReplayBuffer:
     def __init__(self, max_size=50):
-        assert (max_size > 0), "Empty buffer or trying to create a black hole. Be careful."
+        assert (
+            max_size > 0), "Empty buffer or trying to create a black hole. Be careful."
         self.max_size = max_size
         self.data = []
 

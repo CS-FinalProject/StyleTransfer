@@ -64,12 +64,12 @@ class CycleGAN(BaseModel):
         """
         self.switch_mode()
 
-        identity_A2B = self.identity_loss_func(self.generator_A2B(real_image_B), real_image_B)
-        identity_B2A = self.identity_loss_func(self.generator_B2A(real_image_A), real_image_A)
+        identity_B2A = self.identity_loss_func(self.generator_A2B(real_image_B), real_image_B)
+        identity_A2B = self.identity_loss_func(self.generator_B2A(real_image_A), real_image_A)
 
         loss = (identity_A2B + identity_B2A) * self.lambda_param / 2
 
-        loss.backward()
+        # loss.backward()
         return identity_A2B, identity_B2A
 
     def adversarial_loss(self, discriminator: Discriminator, optimizer,
@@ -79,7 +79,7 @@ class CycleGAN(BaseModel):
         discriminator given an input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
-        self.switch_mode()
+        # self.switch_mode()
 
         # disc_prediction_real = discriminator(real)
         # disc_loss_real = self.adversarial_loss_func(disc_prediction_real,
@@ -92,10 +92,14 @@ class CycleGAN(BaseModel):
         #                                                 torch.float32))
         # disc_loss = disc_loss_real + disc_loss_fake
         # disc_loss.backward()
+        batch_size = real.shape(0)
+        real_label = torch.full((batch_size, 1), 1, device=self.device, dtype=torch.float32)
+        fake_label = torch.full((batch_size, 1), 0, device=self.device, dtype=torch.float32)
 
-        adversarial = self.adversarial_loss_func(discriminator(real), discriminator(fake))
-        adversarial.backward()
-        optimizer.step()
+        adversarial = self.adversarial_loss_func(discriminator(real), real_label) + \
+                self.adversarial_loss_func(discriminator(fake), fake_label)
+        # adversarial.backward()
+        # optimizer.step()
         return adversarial
 
     def forward_cycle_loss(self, generator: Generator, inv_generator: Generator, optimizer,
@@ -105,8 +109,8 @@ class CycleGAN(BaseModel):
         fake_image = generator(real).to(self.device)
         converted_back = inv_generator(fake_image).to(self.device)
 
-        loss = self.cycle_loss_func(converted_back, real)
-        loss.backward()
+        loss = self.cycle_loss_func(converted_back, real) * self.lambda_param
+        # loss.backward()
 
         optimizer.step()
         return loss
@@ -151,8 +155,8 @@ class CycleGAN(BaseModel):
         #########################################################
         # Update the generators with CycleGAN and Identity      #
         #########################################################
-        self.discriminator_A.set_requires_grad(False)
-        self.discriminator_B.set_requires_grad(False)
+        # self.discriminator_A.set_requires_grad(False)
+        # self.discriminator_B.set_requires_grad(False)
 
         # Identity loss
         losses["identity_A2B"], losses["identity_B2A"] = self.identity_loss(real_imageA, real_imageB)
@@ -160,22 +164,31 @@ class CycleGAN(BaseModel):
         # Cycle GAN loss
         losses["cycle_A2B"], losses["cycle_B2A"] = self.cycle_loss(real_imageA, real_imageB)
 
+        total_gen_loss = losses["cycle_A2B"] + losses["cycle_B2A"] + losses["identity_A2B"] + losses["identity_B2A"]
+        total_gen_loss.backward()
+        self.gen_optim.step()
+
         #####################################################
         # Update the discriminators using adversarial loss  #
         #####################################################
         self.discA_optim.zero_grad()
         self.discB_optim.zero_grad()
 
-        self.discriminator_A.set_requires_grad(True)
-        self.discriminator_B.set_requires_grad(True)
+        # self.discriminator_A.set_requires_grad(True)
+        # self.discriminator_B.set_requires_grad(True)
 
-        losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA,
+        losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA, 
                                                             self.generator_B2A.last_generated.pop().detach())
+        losses["discA_adversarial"].backward()
         losses["discB_adversarial"] = self.adversarial_loss(self.discriminator_B, self.discB_optim, real_imageB,
                                                             self.generator_A2B.last_generated.pop().detach())
-
+        losses["discB_adversarial"].backward()
         self.discA_optim.step()
         self.discB_optim.step()
         self.gen_optim.step()
+
+        self.gen_lr_scheduler.step()
+        self.discA_lr_scheduler.step()
+        self.discB_lr_scheduler.step()
 
         return losses
