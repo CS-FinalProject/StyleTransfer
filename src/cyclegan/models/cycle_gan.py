@@ -10,7 +10,7 @@ from cyclegan.utils import *
 from .generator import Generator
 from .discriminator import Discriminator
 from .base_model import BaseModel
-from .losses import AdversarialLossFunction
+# from .losses import AdversarialLossFunction
 from .. import weights_init
 
 
@@ -32,8 +32,8 @@ class CycleGAN(BaseModel):
         self.init_models(continue_learning)
         # Define the loss functions
         self.identity_loss_func = torch.nn.L1Loss()
-        self.adversarial_loss_func = AdversarialLossFunction()
-        self.cycle_loss_func = torch.nn.MSELoss()
+        self.adversarial_loss_func = nn.MSELoss()
+        self.cycle_loss_func = torch.nn.L1Loss()
 
         ##############
         # Optimizers #
@@ -92,7 +92,7 @@ class CycleGAN(BaseModel):
         #                                                 torch.float32))
         # disc_loss = disc_loss_real + disc_loss_fake
         # disc_loss.backward()
-        batch_size = real.shape(0)
+        batch_size = real.shape[0]
         real_label = torch.full((batch_size, 1), 1, device=self.device, dtype=torch.float32)
         fake_label = torch.full((batch_size, 1), 0, device=self.device, dtype=torch.float32)
 
