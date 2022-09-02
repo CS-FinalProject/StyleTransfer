@@ -26,7 +26,7 @@ def arguments_parsing():
                         help="number of total epochs to run")
     parser.add_argument("--decay_epochs", type=int, default=100,
                         help="In each N epochs, the LR will decrease by 0.1")
-    parser.add_argument("-b", "--batch-size", default=1, type=int,
+    parser.add_argument("-b", "--batch-size", default=64, type=int,
                         metavar="N",
                         help="mini-batch size (default: 1), this is the total "
                              "batch size of all GPUs on the current node when "
@@ -226,7 +226,7 @@ def train(args, device, run):
 
             models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, cycle_gan_model, run)
 
-        cycle_gan_model.step_lr_schedulers()
+        # cycle_gan_model.step_lr_schedulers()
 
 
 def main():

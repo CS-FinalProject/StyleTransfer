@@ -216,6 +216,7 @@ class CycleGAN(BaseModel):
 
     def update_generators(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor,
                           real_label: torch.Tensor, losses: dict):
+
         self.gen_optim.zero_grad()
 
         # Identity Loss
@@ -231,6 +232,7 @@ class CycleGAN(BaseModel):
         # GAN loss D_A(G_A(A))
         fake_image_A = self.generator_B2A(real_image_B)
         fake_output_A = self.discriminator_A(fake_image_A)
+        real_label = torch.full(fake_output_A.shape, 1, device=self.device, dtype=torch.float32)
         loss_GAN_B2A = self.adversarial_loss_func(fake_output_A, real_label)
         # GAN loss D_B(G_B(B))
         fake_image_B = self.generator_A2B(real_image_A)
@@ -266,6 +268,10 @@ class CycleGAN(BaseModel):
 
         # Real A image loss
         real_output_A = self.discriminator_A(real_image_A)
+
+        real_label = torch.full(real_output_A.shape, 1, device=self.device, dtype=torch.float32)
+        fake_label = torch.full(real_output_A.shape, 0, device=self.device, dtype=torch.float32)
+
         errD_real_A = self.adversarial_loss_func(real_output_A, real_label)
 
         # Fake A image loss
@@ -289,6 +295,10 @@ class CycleGAN(BaseModel):
 
         # Real B image loss
         real_output_B = self.discriminator_A(real_image_B)
+
+        real_label = torch.full(real_output_B.shape, 1, device=self.device, dtype=torch.float32)
+        fake_label = torch.full(real_output_B.shape, 0, device=self.device, dtype=torch.float32)
+
         errD_real_B = self.adversarial_loss_func(real_output_B, real_label)
 
         # Fake B image loss
