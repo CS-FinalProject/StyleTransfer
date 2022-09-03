@@ -42,7 +42,7 @@ class Generator(BaseModel):
 
         self.layers = nn.Sequential(
             nn.ReflectionPad2d(3),
-            nn.Conv2d(in_channels=3, out_channels=feature_num, kernel_size=7, stride=1, padding=0),
+            nn.Conv2d(in_channels=z_dim, out_channels=feature_num, kernel_size=7, stride=1, padding=0),
             nn.InstanceNorm2d(num_features=feature_num),
             nn.ReLU(True),
 
@@ -82,3 +82,6 @@ class Generator(BaseModel):
         output = self.layers(z)
         self.last_generated.append(output)
         return output
+
+    def get_fake_image(self) -> torch.Tensor:
+        return self.last_generated.pop()
