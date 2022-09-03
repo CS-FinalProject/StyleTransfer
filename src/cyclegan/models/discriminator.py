@@ -1,5 +1,6 @@
-import torch.nn as nn
-from .base_model import BaseModel
+from torch import flatten
+from .base_model import *
+import torch.nn.functional as F
 
 
 class Discriminator(BaseModel):
@@ -12,31 +13,35 @@ class Discriminator(BaseModel):
         - A single value, representing the probability that the image is real.
     """
 
-    def __init__(self, in_feacher: int = 3, out_feacher: int = 64):
+    def __init__(self, in_feature: int = 3, out_feature: int = 64):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_feacher, out_channels=out_feacher, kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels=in_feature, out_channels=out_feature, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=out_feacher, out_channels=2 * out_feacher, kernel_size=4, stride=2, padding=1,
+            nn.Conv2d(in_channels=out_feature, out_channels=2 * out_feature, kernel_size=4, stride=2, padding=1,
                       bias=False),
-            nn.BatchNorm2d(2 * out_feacher),
+            nn.InstanceNorm2d(2 * out_feature),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=2 * out_feacher, out_channels=4 * out_feacher, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(4 * out_feacher),
+            nn.Conv2d(in_channels=2 * out_feature, out_channels=4 * out_feature, kernel_size=4, stride=2, padding=1,
+                      bias=False),
+            nn.InstanceNorm2d(4 * out_feature),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=4 * out_feacher, out_channels=8 * out_feacher, kernel_size=4, stride=1, padding=1),
-            nn.BatchNorm2d(8 * out_feacher),
+            nn.Conv2d(in_channels=4 * out_feature, out_channels=8 * out_feature, kernel_size=4, stride=2, padding=1,
+                      bias=False),
+            nn.InstanceNorm2d(8 * out_feature),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(in_channels=8 * out_feacher, out_channels=1, kernel_size=4, stride=1, padding=1),
-            nn.Sigmoid()
+            nn.Conv2d(in_channels=8 * out_feature, out_channels=1, kernel_size=4, stride=1, padding=0, bias=False),
         )
 
     def forward(self, image):
         """
         Forward pass of the discriminator.
         """
-        return self.layers(image)
+
+        x = self.layers(image)
+        x = F.avg_pool2d(x, x.size()[2:])
+        return flatten(x, 1)

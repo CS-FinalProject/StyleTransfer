@@ -3,118 +3,111 @@ import os
 import torch.nn as nn
 import torch
 from os import path
+from itertools import chain
 
+import wandb
 from cyclegan.utils import *
 
 from .generator import Generator
 from .discriminator import Discriminator
 from .base_model import BaseModel
+from .. import weights_init
 
 
 class CycleGAN(BaseModel):
-    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, counters: dict, device):
+    def __init__(self, lr: float, lambda_param: float, continue_learning: bool, device, counter: int, decay_epoch: int):
         super().__init__()
 
         self.lambda_param = lambda_param
         self.device = device
+        self.counter = counter
+        self.decay_epoch = decay_epoch
+        self.losses = dict()
 
         # Define the generators and discriminators
         self.generator_A2B = Generator().to(device)
         self.generator_B2A = Generator().to(device)
         self.discriminator_A = Discriminator().to(device)
         self.discriminator_B = Discriminator().to(device)
-
-        self.init_models(continue_learning, counters)
-        self.counters = counters
+        self.init_models(continue_learning)
 
         # Define the loss functions
         self.identity_loss_func = torch.nn.L1Loss()
-        self.adversarial_loss_func = torch.nn.MSELoss()
-        self.cycle_loss_func = torch.nn.MSELoss()
+        self.adversarial_loss_func = nn.MSELoss()
+        self.cycle_loss_func = torch.nn.L1Loss()
 
         ##############
         # Optimizers #
         ##############
-        self.genA2B_optim = torch.optim.Adam(self.generator_A2B.parameters(), lr=lr)
-        self.genB2A_optim = torch.optim.Adam(self.generator_B2A.parameters(), lr=lr)
-        self.discA_optim = torch.optim.Adam(self.discriminator_A.parameters(), lr=lr)
-        self.discB_optim = torch.optim.Adam(self.discriminator_B.parameters(), lr=lr)
+        self.gen_optim = torch.optim.Adam(chain(self.generator_A2B.parameters(), self.generator_B2A.parameters()),
+                                          lr=lr, betas=(0.5, 0.999))
+        self.discA_optim = torch.optim.Adam(
+            self.discriminator_A.parameters(), lr=lr, betas=(0.5, 0.999))
+        self.discB_optim = torch.optim.Adam(
+            self.discriminator_B.parameters(), lr=lr, betas=(0.5, 0.999))
 
         # Defining Decay LR - Gradually changing the LR
-        self.genA2B_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.genA2B_optim, gamma=0.5)
-        self.genB2A_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.genB2A_optim, gamma=0.5)
-        self.discA_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discA_optim, gamma=0.5)
-        self.discB_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.discB_optim, gamma=0.5)
+        # self.gen_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.gen_optim, step_size=decay_epoch, gamma=0.1)
+        # self.discA_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discA_optim, step_size=decay_epoch, gamma=0.1)
+        # self.discB_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discB_optim, step_size=decay_epoch, gamma=0.1)
 
-    def init_models(self, cont: bool, counters: dict) -> None:
+    def init_models(self, cont: bool) -> None:
         # Load the latest models if we want to continue learning
-        if cont and len(os.listdir(GEN_A2B_PATH)) > 0:
-            self.generator_A2B.load_state_dict(torch.load(path.join(GEN_A2B_PATH, str(counters["genA2B"]) + ".pth")))
-            self.generator_B2A.load_state_dict(torch.load(path.join(GEN_B2A_PATH, str(counters["genB2A"]) + ".pth")))
-            self.discriminator_A.load_state_dict(torch.load(path.join(DISC_A_PATH, str(counters["discA"]) + ".pth")))
-            self.discriminator_B.load_state_dict(torch.load(path.join(DISC_B_PATH, str(counters["discB"]) + ".pth")))
-        else:
+        if not cont:
             self.generator_A2B.apply(weights_init)
             self.generator_B2A.apply(weights_init)
             self.discriminator_A.apply(weights_init)
             self.discriminator_B.apply(weights_init)
 
-    def identity_loss(self, discriminator: Discriminator, optimizer, real_image: torch.Tensor,
-                      fake_image: torch.Tensor) -> torch.Tensor:
+    def identity_loss(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor) -> tuple:
         """
-        The identity loss is computed by comparing the output of the discriminator against real and fake images with
-        known labels. Only affects the discriminator.
+        The identity loss is computed by comparing the output of the inverse generator against a real image.
+        It keeps the colors form the input to the generated image.
         :return: Loss value
         """
-        # Real
-        real_pred = discriminator(real_image).to(self.device)
-        loss_real = self.identity_loss_func(real_pred,
-                                            torch.full(real_pred.shape, 1, device=self.device).to(torch.float32))
-        # Fake
-        fake_image = fake_image.to(self.device)
-        fake_pred = discriminator(fake_image)
-        loss_fake = self.identity_loss_func(fake_pred,
-                                            torch.full(real_pred.shape, 0, device=self.device).to(torch.float32))
+        # Difference between identity image and real image
+        loss_A = self.identity_loss_func(self.generator_B2A(real_image_A), real_image_A) * self.lambda_param / 2
+        loss_B = self.identity_loss_func(self.generator_A2B(real_image_B), real_image_B) * self.lambda_param / 2
 
-        # Compute the loss
-        loss = (loss_fake + loss_real)
-        loss.backward()
-        optimizer.step()
-        return loss
+        # Track losses
+        self.losses["idt_loss_A"] = loss_A
+        self.losses["idt_loss_B"] = loss_B
 
-    def adversarial_loss(self, generator: Generator, discriminator: Discriminator, optimizer,
-                         real: torch.Tensor) -> torch.Tensor:
+        return loss_A, loss_B
+
+    def adversarial_loss_generator(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor,
+                                   real_label: torch.Tensor) -> tuple:
         """
-        The adversarial loss affects the generator. Its goal is to minimize the loss of the discriminator given an
-        input from the generator, intuitively, to trick the generator.
+        The adversarial loss affects the generator and the discriminator. Its goal is to minimize the loss of the
+        discriminator given an input from the generator, intuitively, to trick the generator.
         :return: Loss value
         """
-        fake = generator(real).to(self.device)
-        disc_prediction = discriminator(fake)
-        disc_loss = self.adversarial_loss_func(disc_prediction,
-                                               torch.full(disc_prediction.shape, 1, device=self.device).to(
-                                                   torch.float32))
-        disc_loss.backward()
 
-        optimizer.step()
-        return disc_loss
+        # The generator wants to "trick" the discriminator, and therefore minimize the difference
+        # between the discriminator's output and the real label
+        loss_A2B = self.adversarial_loss_func(self.discriminator_B(self.generator_A2B(real_image_A)), real_label)
+        loss_B2A = self.adversarial_loss_func(self.discriminator_A(self.generator_B2A(real_image_B)), real_label)
 
-    def forward_cycle_loss(self, generator: Generator, inv_generator: Generator, optimizer,
-                           real: torch.Tensor) -> torch.Tensor:
-        fake_image = generator(real).to(self.device)
-        converted_back = inv_generator(fake_image).to(self.device)
-        loss = self.cycle_loss_func(converted_back, real)
-        loss.backward()
+        # Track losses
+        self.losses["adv_loss_genA2B"] = loss_A2B
+        self.losses["adv_loss_genB2A"] = loss_B2A
 
-        optimizer.step()
-        return loss
+        return loss_A2B, loss_B2A
 
-    def cycle_loss(self, realA: torch.Tensor, realB: torch.Tensor) -> torch.Tensor:
-        forward_loss = self.forward_cycle_loss(self.generator_A2B, self.generator_B2A, self.genA2B_optim,
-                                               realA) * self.lambda_param
-        backward_loss = self.forward_cycle_loss(self.generator_B2A, self.generator_A2B, self.genB2A_optim,
-                                                realB) * self.lambda_param
-        return forward_loss + backward_loss
+    def forward_cycle_loss(self, generator: Generator, inv_generator: Generator,
+                           real_image: torch.Tensor) -> torch.Tensor:
+        recovered_image = inv_generator(generator(real_image))
+        return self.cycle_loss_func(recovered_image, real_image) * self.lambda_param
+
+    def cycle_loss(self, realA: torch.Tensor, realB: torch.Tensor) -> tuple:
+        forward_loss = self.forward_cycle_loss(self.generator_A2B, self.generator_B2A, realA)
+        backward_loss = self.forward_cycle_loss(self.generator_B2A, self.generator_A2B, realB)
+
+        # Track losses
+        self.losses["cycle_loss_A2B"] = forward_loss
+        self.losses["cycle_loss_B2A"] = backward_loss
+
+        return forward_loss, backward_loss
 
     def forward(self, image: torch.Tensor, is_inverse: bool = True):
         if not is_inverse:
@@ -122,45 +115,59 @@ class CycleGAN(BaseModel):
         return self.generator_B2A(image)
 
     def step_lr_schedulers(self):
-        self.genA2B_lr_scheduler.step()
-        self.genB2A_lr_scheduler.step()
-        self.discA_lr_scheduler.step()
-        self.discB_lr_scheduler.step()
+        # self.gen_lr_scheduler.step()
+        # self.discA_lr_scheduler.step()
+        # self.discB_lr_scheduler.step()
+        pass
+
+    def update_generators(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor,
+                          real_label: torch.Tensor):
+        self.gen_optim.zero_grad()
+
+        # Identity Loss
+        idt_loss_A2B, idt_loss_B2A = self.identity_loss(real_image_A, real_image_B)
+
+        # Adversarial Loss
+        adv_loss_A2B, adv_loss_B2A = self.adversarial_loss_generator(real_image_A, real_image_B, real_label)
+
+        # Cycle Loss
+        forward_loss, backward_loss = self.cycle_loss(real_image_A, real_image_B)
+
+        # Calculate total generators loss
+        total_gen_loss = idt_loss_A2B + idt_loss_B2A + adv_loss_A2B + adv_loss_B2A + forward_loss + backward_loss
+
+        total_gen_loss.backward()
+        self.gen_optim.step()
+
+    def update_discriminator(self, discriminator: Discriminator, optimizer, real_image: torch.Tensor,
+                             fake_image: torch.Tensor, real_label: torch.Tensor, fake_label: torch.Tensor):
+        optimizer.zero_grad()
+
+        real_image_loss = self.adversarial_loss_func(discriminator(real_image), real_label)
+        fake_image_loss = self.adversarial_loss_func(discriminator(fake_image.detach()), fake_label)
+        total_loss = (real_image_loss + fake_image_loss) / 2
+
+        total_loss.backward()
+        optimizer.step()
+
+        self.losses[f"adv_loss_{discriminator.__class__.__name__}"] = total_loss
+        return total_loss
 
     def train_model(self, real_imageA: torch.Tensor, real_imageB: torch.Tensor) -> dict:
-        losses = dict()
+        batch_size = real_imageA.shape[0]
+        real_label = torch.full(
+            (batch_size, 1), 1, device=self.device, dtype=torch.float32)
+        fake_label = torch.full(
+            (batch_size, 1), 0, device=self.device, dtype=torch.float32)
 
-        self.genA2B_optim.zero_grad()
-        self.genB2A_optim.zero_grad()
-        self.discA_optim.zero_grad()
-        self.discB_optim.zero_grad()
+        with torch.autograd.set_detect_anomaly(True):
+            self.gen_optim.zero_grad()
 
-        #########################################################
-        # Update the generators with CycleGAN and Adversarial   #
-        #########################################################
-        # self.discriminator_A.set_requires_grad(False)
-        # self.discriminator_B.set_requires_grad(False)
+            self.update_generators(real_imageA, real_imageB,
+                                   real_label)
+            self.update_discriminator(self.discriminator_A, self.discA_optim, real_imageA,
+                                      self.generator_B2A.get_fake_image(), real_label, fake_label)
+            self.update_discriminator(self.discriminator_B, self.discB_optim, real_imageB,
+                                      self.generator_A2B.get_fake_image(), real_label, fake_label)
 
-        # Adversarial loss
-        losses["genA2B_adversarial"] = self.adversarial_loss(self.generator_A2B, self.discriminator_B,
-                                                             self.genA2B_optim, real_imageA)
-        losses["genB2A_adversarial"] = self.adversarial_loss(self.generator_B2A, self.discriminator_A,
-                                                             self.genB2A_optim, real_imageB)
-        # Cycle GAN loss
-        losses["cycle_loss"] = self.cycle_loss(real_imageA, real_imageB)
-
-        #####################################################
-        # Update the discriminators using Identity loss     #
-        #####################################################
-        # self.discriminator_A.set_requires_grad(True)
-        # self.discriminator_B.set_requires_grad(True)
-
-        fake_imageA = self.generator_B2A.last_generated.pop().detach()
-        losses["discA_identity"] = self.identity_loss(self.discriminator_A, self.discA_optim, real_imageA,
-                                                      fake_imageA)
-
-        fake_imageB = self.generator_A2B.last_generated.pop().detach()
-        losses["discB_identity"] = self.identity_loss(self.discriminator_B, self.discB_optim, real_imageB,
-                                                      fake_imageB)
-
-        return losses
+        return self.losses

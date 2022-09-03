@@ -1,149 +1,142 @@
-# CycleGAN-PyTorch
+# Style Transfer
 
 ### Overview
-This repository contains an op-for-op PyTorch reimplementation of [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593).
-
-[Demo and Docker image on Replicate](https://replicate.ai/lornatang/cyclegan-pytorch)
+This repository is a simplified implementation of [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593).  
 
 ### Table of contents
-1. [About Cycle Generative Adversarial Networks](#about-cycle-generative-adversarial-networks)
-2. [Model Description](#model-description)
-3. [Installation](#installation)
+1. [About Generative Adversarial Networks](#about-generative-adversarial-networks)
+   * [Generator](#generator)
+   * [Discriminator](#discriminator)
+2. [About CycleGAN](#about-cyclegan)
+3. [Installation and Usage](#installation-and-usage)
     * [Clone and install requirements](#clone-and-install-requirements)
     * [Download pretrained weights](#download-pretrained-weights)
     * [Download dataset](#download-dataset)
 4. [Test](#test)
-4. [Train](#train)
+5. [Train](#train)
     * [Example](#example)
     * [Resume training](#resume-training)
-5. [Contributing](#contributing) 
 6. [Credit](#credit)
 
-### About Cycle Generative Adversarial Networks
+### About Generative Adversarial Networks
+Generative Adversarial Networks, or GANs for short, are tasks in which a model can generate new examples which
+could have been drawn from the original dataset.
 
-If you're new to CycleGAN, here's an abstract straight from the paper:
+GANs are constructed from two neural nets:
 
-Image-to-image translation is a class of vision and graphics problems where the goal is to learn the mapping between an input image and an output image using a training set of aligned image pairs. However, for many tasks, paired training data will not be available. We present an approach for learning to translate an image from a source domain X to a target domain Y in the absence of paired examples. Our goal is to learn a mapping G:X→Y such that the distribution of images from G(X) is indistinguishable from the distribution Y using an adversarial loss. Because this mapping is highly under-constrained, we couple it with an inverse mapping F:Y→X and introduce a cycle consistency loss to push F(G(X))≈X (and vice versa). Qualitative results are presented on several tasks where paired training data does not exist, including collection style transfer, object transfiguration, season transfer, photo enhancement, etc. Quantitative comparisons against several prior methods demonstrate the superiority of our approach.
+#### Generator
+The generator is a net which generates new data based on the dataset. Its goal is to "trick" the discriminator
+into predicting its outputs as real data.
 
-### Model Description
+The net inputs a random noise vector $(z)$, and generates an image from it.
 
-We have two networks, G (Generator) and D (Discriminator).The Generator is a network for generating images. It receives a random noise z and generates images from this noise, which is called G(z).Discriminator is a discriminant network that discriminates whether an image is real. The input is x, x is a picture, and the output is D of x is the probability that x is a real picture, and if it's 1, it's 100% real, and if it's 0, it's not real.
+#### Discriminator
+The discriminator is a net which discriminates between real and fake data of a certain domain. Given an image,
+the discriminator will predict whether the image is real or fake.
 
-### Installation
+The net inputs an RGB image, and outputs a probability.
+
+### About CycleGAN
+We've seen the description for GANs, in the paper, a new architecture is presented, CycleGAN.
+
+The CycleGAN architecture works in such a way that the mapping is learned on both directions. 
+So, if in a regular GAN model we learn a mapping $(X -> Y)$, in CycleGAN we also learn the mapping $(Y -> X)$.
+
+The forward mapping generator is notated as $(G)$, and the backward one as $(F)$.
+
+### Installation and Usage
 
 #### Clone and install requirements
 
 ```bash
-$ git clone https://github.com/Lornatang/CycleGAN-PyTorch
-$ cd CycleGAN-PyTorch/
+$ git clone https://github.com/CS-FinalProject/StyleTransfer.git
+$ cd StyleTransfer/
 $ pip3 install -r requirements.txt
-```
-
-#### Download pretrained weights
-
-```bash
-# example: horse2zebra
-$ cd weights/
-$ bash download_weights.sh horse2zebra
 ```
 
 #### Download dataset
 
 ```bash
-# example: horse2zebra
-$ cd data/
-$ bash get_dataset.sh horse2zebra
+$ ./data/get_dataset.sh
 ```
 
 ### Test
 
-The following commands can be used to test the whole test.
-
-```bash
-# Example: horse2zebra
-$ python3 test.py --dataset horse2zebra --cuda
-```
-
-For single image processing, use the following command.
-
-```bash
-$ python3 test_image.py --file assets/horse.png --model-name weights/horse2zebra/netG_A2B.pth --cuda
-```
-
-InputA --> StyleB  --> RecoveryA
-
-<img src="assets/apple.png" title="InputA"/><img src="assets/fake_orange.png" title="StyleB"><img src="assets/fake_apple.png" title="RecoveryA">
-<img src="assets/cezanne.png" title="InputA"/><img src="assets/fake_photo.png" title="StyleB"><img src="assets/fake_cezanne.png" title="RecoveryA">
-<img src="assets/facades.png" title="InputA"/><img src="assets/fake_facades1.png" title="StyleB"><img src="assets/fake_facades2.png" title="RecoveryA">
-<img src="assets/horse.png" title="InputA"/><img src="assets/fake_zebra.png" title="StyleB"><img src="assets/fake_horse.png" title="RecoveryA">
-
-### Train
-
 ```text
-usage: train.py [-h] [--dataroot DATAROOT] [--dataset DATASET] [--epochs N]
-                [--decay_epochs DECAY_EPOCHS] [-b N] [--lr LR] [-p N] [--cuda]
-                [--netG_A2B NETG_A2B] [--netG_B2A NETG_B2A] [--netD_A NETD_A]
-                [--netD_B NETD_B] [--image-size IMAGE_SIZE] [--outf OUTF]
-                [--manualSeed MANUALSEED]
+usage: test.py [-h] [--dataroot DATAROOT] [--cuda] [--outf OUTF] [--image-size IMAGE_SIZE] [--manualSeed MANUALSEED] [--model-path MODEL_PATH]
 
-PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent
-Adversarial Networks`
+Test model results of Style Transfer
 
 optional arguments:
   -h, --help            show this help message and exit
   --dataroot DATAROOT   path to datasets. (default:./data)
-  --dataset DATASET     dataset name. (default:`horse2zebra`)Option:
-                        [apple2orange, summer2winter_yosemite, horse2zebra,
-                        monet2photo, cezanne2photo, ukiyoe2photo,
-                        vangogh2photo, maps, facades, selfie2anime,
-                        iphone2dslr_flower, ae_photos, ]
+  --cuda                Enables cuda
+  --outf OUTF           folder to output images. (default: `./results`).
+  --image-size IMAGE_SIZE
+                        size of the data crop (squared assumed). (default:256)
+  --manualSeed MANUALSEED
+                        Seed for initializing training. (default:none)
+  --model-path MODEL_PATH
+                        A path to a specific model, if not specified, the program will automatically load the latest one
+
+```
+
+The following commands can be used to test the whole test.
+
+```bash
+$ python3 test.py --cuda
+```
+
+For single image processing, use the following command:
+
+```bash
+$ python3 test_image.py --file assets/cezanne.png --cuda
+```
+
+### Train
+
+```text
+usage: train.py [-h] [--dataroot DATAROOT] [--epochs N] [--decay_epochs DECAY_EPOCHS] [-b N] [--lr LR] [--cuda] [--continue-training CONTINUE_TRAINING] [--image-size IMAGE_SIZE] [--outf OUTF] [--manualSeed MANUALSEED]
+                [--save_model_freq SAVE_MODEL_FREQ] [--lambda_param LAMBDA_PARAM]
+
+Style Transfer training
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dataroot DATAROOT   path to datasets. (default:./data)
   --epochs N            number of total epochs to run
   --decay_epochs DECAY_EPOCHS
-                        epoch to start linearly decaying the learning rate to
-                        0. (default:100)
-  -b N, --batch-size N  mini-batch size (default: 1), this is the total batch
-                        size of all GPUs on the current node when using Data
-                        Parallel or Distributed Data Parallel
+                        epoch to start linearly decaying the learning rate to 0. (default:100)
+  -b N, --batch-size N  mini-batch size (default: 1), this is the total batch size of all GPUs on the current node when using Data Parallel or Distributed Data Parallel
   --lr LR               learning rate. (default:0.0002)
-  -p N, --print-freq N  print frequency. (default:100)
   --cuda                Enables cuda
-  --netG_A2B NETG_A2B   path to netG_A2B (to continue training)
-  --netG_B2A NETG_B2A   path to netG_B2A (to continue training)
-  --netD_A NETD_A       path to netD_A (to continue training)
-  --netD_B NETD_B       path to netD_B (to continue training)
+  --continue-training CONTINUE_TRAINING
+                        If this flag is true, then the training will resume from the last checkpoint
   --image-size IMAGE_SIZE
                         size of the data crop (squared assumed). (default:256)
   --outf OUTF           folder to output images. (default:`./outputs`).
   --manualSeed MANUALSEED
                         Seed for initializing training. (default:none)
-
+  --save_model_freq SAVE_MODEL_FREQ
+                        The program will save the model each N batches
+  --lambda_param LAMBDA_PARAM
+                        The lambda parameter introduced in the paper. It's a weight for the cycle loss
 ```
 
 #### Example
 
 ```bash
 # Example: horse2zebra
-$ python3 train.py --dataset horse2zebra --cuda
+$ python3 train.py --cuda --save_model_freq 3000
 ```
 
 #### Resume training
 
-If you want to load weights that you've trained before, run the following command.
+We save all models in W&B, so using the flag will load the latest automatically.
 
 ```bash
-# Example: horse2zebra for epoch 100
-$ python3 train.py --dataset horse2zebra \
-    --netG_A2B weights/horse2zebra/netG_A2B_epoch_100.pth \
-    --netG_B2A weights/horse2zebra/netG_B2A_epoch_100.pth \
-    --netD_A weights/horse2zebra/netD_A_epoch_100.pth \
-    --netD_B weights/horse2zebra/netD_B_epoch_100.pth --cuda
+$ python3 train.py --cuda --save_model_freq 3000 --continue-training=True
 ```
-
-### Contributing
-
-If you find a bug, create a GitHub issue, or even better, submit a pull request. Similarly, if you have questions, simply post them as GitHub issues.   
-
-I look forward to seeing what the community does with these models! 
 
 ### Credit
 

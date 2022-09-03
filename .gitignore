@@ -9,6 +9,9 @@ __pycache__/
 wandb/
 dataset/
 venv/
+models/
+src/artifacts/
+artifacts/
 
 # Distribution / packaging
 .Python

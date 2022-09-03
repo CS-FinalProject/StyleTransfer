@@ -9,12 +9,9 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import wandb
 
-from cyclegan.utils import GEN_A2B_PATH, GEN_B2A_PATH, DISC_A_PATH, DISC_B_PATH
+from cyclegan.utils import Checkpoint
 from cyclegan import ImageDataset
 from cyclegan.models.cycle_gan import CycleGAN
-
-# W&B initialization
-wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
 
 
 def arguments_parsing():
@@ -22,15 +19,14 @@ def arguments_parsing():
     Define arguments for the training process.
     """
     parser = argparse.ArgumentParser(
-        description="PyTorch implements `Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial "
-                    "Networks`")
-    parser.add_argument("--dataroot", type=str, default="..",
+        description="Style Transfer training")
+    parser.add_argument("--dataroot", type=str, default=".",
                         help="path to datasets. (default:./data)")
     parser.add_argument("--epochs", default=200, type=int, metavar="N",
                         help="number of total epochs to run")
     parser.add_argument("--decay_epochs", type=int, default=100,
-                        help="epoch to start linearly decaying the learning rate to 0. (default:100)")
-    parser.add_argument("-b", "--batch-size", default=1, type=int,
+                        help="In each N epochs, the LR will decrease by 0.1")
+    parser.add_argument("-b", "--batch-size", default=64, type=int,
                         metavar="N",
                         help="mini-batch size (default: 1), this is the total "
                              "batch size of all GPUs on the current node when "
@@ -42,16 +38,15 @@ def arguments_parsing():
                         help="If this flag is true, then the training will resume from the last checkpoint")
     parser.add_argument("--image-size", type=int, default=256,
                         help="size of the data crop (squared assumed). (default:256)")
-    parser.add_argument("--outf", default="../outputs",
+    parser.add_argument("--outf", default="./outputs",
                         help="folder to output images. (default:`./outputs`).")
     parser.add_argument("--manualSeed", type=int,
                         help="Seed for initializing training. (default:none)")
-    parser.add_argument("--save_model_freq", default=20, help="The program will save the model each N batches",
+    parser.add_argument("--save_model_freq", default=200, help="The program will save the model each N batches",
                         type=int)
     parser.add_argument("--lambda_param", default=10,
                         help="The lambda parameter introduced in the paper. It's a weight for the cycle loss",
                         type=float)
-
     args = parser.parse_args()
 
     if args.manualSeed is None:
@@ -64,12 +59,19 @@ def arguments_parsing():
 
 
 def init_weights_and_biases(args):
-    wandb.init(project="style-transfer", entity="haifa-uni-monet-gan")
-    wandb.config = {
+    if args.continue_training:
+        run = wandb.init(project="style-transfer")
+    else:
+        run = wandb.init(project="style-transfer")
+
+    wandb.config.update({
+        "run_id": wandb.run.id,
         "learning_rate": args.lr,
         "epochs": args.epochs,
         "batch_size": args.batch_size
-    }
+    })
+
+    return run
 
 
 def init_folders(args) -> None:
@@ -81,18 +83,12 @@ def init_folders(args) -> None:
         os.makedirs(args.outf)
     if not os.path.exists("models"):
         os.makedirs("models")
-    if not os.path.exists(GEN_A2B_PATH):
-        os.makedirs(GEN_A2B_PATH)
-    if not os.path.exists(GEN_B2A_PATH):
-        os.makedirs(GEN_B2A_PATH)
-    if not os.path.exists(DISC_A_PATH):
-        os.makedirs(DISC_A_PATH)
-    if not os.path.exists(DISC_B_PATH):
-        os.makedirs(DISC_B_PATH)
-    if not os.path.exists(os.path.join("outputs", "A")):
-        os.makedirs(os.path.join("outputs", "A"))
-    if not os.path.exists(os.path.join("outputs", "B")):
-        os.makedirs(os.path.join("outputs", "B"))
+    if not os.path.exists("artifacts"):
+        os.makedirs("artifacts")
+    if not os.path.exists(os.path.join(args.outf, "A")):
+        os.makedirs(os.path.join(args.outf, "A"))
+    if not os.path.exists(os.path.join(args.outf, "B")):
+        os.makedirs(os.path.join(args.outf, "B"))
 
 
 def init_models_counting(dir_path: str) -> int:
@@ -113,15 +109,6 @@ def init_models_counting(dir_path: str) -> int:
         return -1
 
 
-def models_counting() -> dict:
-    return {
-        "genA2B": init_models_counting(GEN_A2B_PATH),
-        "genB2A": init_models_counting(GEN_B2A_PATH),
-        "discA": init_models_counting(DISC_A_PATH),
-        "discB": init_models_counting(DISC_B_PATH),
-    }
-
-
 def init_dataset(args) -> torch.utils.data.DataLoader:
     dataset = ImageDataset(root=os.path.join(args.dataroot, "dataset"),
                            transform=transforms.Compose([
@@ -137,32 +124,47 @@ def init_dataset(args) -> torch.utils.data.DataLoader:
     return dataloader
 
 
-def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx: int, cycle_gan: CycleGAN):
-    if batch_idx % args.save_model_freq != 0:
+def save_checkpoint(cycle_gan: CycleGAN, epoch_idx: int, batch_idx: int, run):
+    cycle_gan.counter += 1
+    checkpoint = Checkpoint(epoch_idx, batch_idx, cycle_gan)
+    torch.save(checkpoint, os.path.join("models", str(cycle_gan.counter) + ".pth"))
+
+    artifact = wandb.Artifact("cycle_gan_model", type="model", metadata={
+        "run_id": wandb.run.id,
+        "epoch": epoch_idx,
+        "batch": batch_idx
+    })
+    artifact.add_file(os.path.join("models", str(cycle_gan.counter) + ".pth"), name="cycle_gan.pth")
+    run.log_artifact(artifact)
+
+
+def load_checkpoint(model: CycleGAN, run, device) -> tuple:
+    # checkpoint = torch.load(wandb.restore(path))
+    artifact = run.use_artifact('cycle_gan_model:latest', type='model')
+    artifact.download(root="artifacts")
+
+    checkpoint = torch.load(os.path.join("artifacts", "cycle_gan.pth"), map_location=device)
+
+    # Loading sub-models
+    model.generator_A2B.load_state_dict(checkpoint.genA2B)
+    model.generator_B2A.load_state_dict(checkpoint.genB2A)
+    model.discriminator_A.load_state_dict(checkpoint.discA)
+    model.discriminator_B.load_state_dict(checkpoint.discB)
+
+    # Loading optimizers for each model
+    model.gen_optim.load_state_dict(checkpoint.gen_optim)
+    model.discA_optim.load_state_dict(checkpoint.discA_optim)
+    model.discB_optim.load_state_dict(checkpoint.discB_optim)
+
+    return checkpoint.epoch, checkpoint.batch
+
+
+def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx: int, cycle_gan: CycleGAN, run):
+    if batch_idx % args.save_model_freq != 0 or batch_idx == 0:
         return
 
-    for model in cycle_gan.counters:
-        cycle_gan.counters[model] += 1
-
     # Saving the current trained models
-    torch.save(cycle_gan.generator_A2B.state_dict(),
-               os.path.join(GEN_A2B_PATH, str(cycle_gan.counters["genA2B"]) + ".pth"))
-    torch.save(cycle_gan.generator_B2A.state_dict(),
-               os.path.join(GEN_B2A_PATH, str(cycle_gan.counters["genB2A"]) + ".pth"))
-    torch.save(cycle_gan.discriminator_A.state_dict(),
-               os.path.join(DISC_A_PATH, str(cycle_gan.counters["discA"]) + ".pth"))
-    torch.save(cycle_gan.discriminator_B.state_dict(),
-               os.path.join(DISC_B_PATH, str(cycle_gan.counters["discB"]) + ".pth"))
-
-    # Upload to W&B
-    wandb.save(cycle_gan.generator_A2B.state_dict(),
-               os.path.join(GEN_A2B_PATH, str(cycle_gan.counters["genA2B"]) + ".pth"))
-    wandb.save(cycle_gan.generator_B2A.state_dict(),
-               os.path.join(GEN_B2A_PATH, str(cycle_gan.counters["genB2A"]) + ".pth"))
-    wandb.save(cycle_gan.discriminator_A.state_dict(),
-               os.path.join(DISC_A_PATH, str(cycle_gan.counters["discA"]) + ".pth"))
-    wandb.save(cycle_gan.discriminator_B.state_dict(),
-               os.path.join(DISC_B_PATH, str(cycle_gan.counters["discB"]) + ".pth"))
+    save_checkpoint(cycle_gan, epoch_idx, batch_idx, run)
 
     # Save images generated by the latest models
     fake_image_B = cycle_gan.generator_A2B(real_imageA)
@@ -196,16 +198,24 @@ def models_checkpoints(real_imageA, real_imageB, args, epoch_idx: int, batch_idx
     })
 
 
-def train(args, device):
+def train(args, device, run):
     dataloader = init_dataset(args)
+    latest_model = -1
 
-    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, models_counting(), device)
+    cycle_gan_model = CycleGAN(args.lr, args.lambda_param, args.continue_training, device, latest_model,
+                               args.decay_epochs)
 
-    for epoch_idx in range(args.epochs):
+    if args.continue_training:
+        last_epoch, last_batch = load_checkpoint(cycle_gan_model, run, device)
+    else:
+        last_epoch = 0
+
+    for epoch_idx in range(last_epoch, args.epochs):
         progress_bar = tqdm(dataloader, desc="Epoch {}".format(epoch_idx))
         for batch_idx, batch in enumerate(progress_bar):
             progress_bar.set_description(
-                "Epoch ({}/{}) Batch ({}/{})".format(epoch_idx, args.epochs, batch_idx, len(dataloader)))
+                "Epoch ({}/{}) Batch ({}/{}): LR={}".format(epoch_idx, args.epochs, batch_idx, len(dataloader),
+                                                            cycle_gan_model.gen_optim.param_groups[0]['lr']))
 
             image_A, image_B = batch["A"], batch["B"]
             image_A = image_A.to(device)
@@ -214,16 +224,16 @@ def train(args, device):
             losses = cycle_gan_model.train_model(image_A, image_B)
             wandb.log(losses)
 
-        cycle_gan_model.step_lr_schedulers()
+            models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, cycle_gan_model, run)
 
-        models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, cycle_gan_model)
+        # cycle_gan_model.step_lr_schedulers()
 
 
 def main():
     args_parser = arguments_parsing()
 
     # Initialize a bunch of things
-    init_weights_and_biases(args_parser)
+    run = init_weights_and_biases(args_parser)
     init_folders(args_parser)
 
     cudnn.benchmark = True
@@ -232,7 +242,7 @@ def main():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     device = torch.device("cuda:0" if args_parser.cuda and torch.cuda.is_available() else "cpu")
 
-    train(args_parser, device)
+    train(args_parser, device, run)
     wandb.finish()
 
 
