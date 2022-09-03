@@ -1,8 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QFileDialog, QPushButton
-from PyQt5.QtGui import QIcon, QPixmap
-# from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
+from torch import load
+
+from src.cyclegan.models.cycle_gan import CycleGAN
 
 TOP = 100
 LEFT = 100
@@ -10,6 +12,21 @@ WIDTH = 650
 HEIGHT = 450
 
 NAME = 'Style Transfer'
+IMAGE_TO_CONVERT = None
+
+
+def load_model(path):
+    device = torch.device("cuda:0" if args_parser.cuda and torch.cuda.is_available() else "cpu")
+    checkpoint = load(path, map_location=device)
+
+    # Loading sub-models
+    model = CycleGAN()
+    model.generator_A2B.load_state_dict(checkpoint.genA2B)
+    model.generator_B2A.load_state_dict(checkpoint.genB2A)
+    model.discriminator_A.load_state_dict(checkpoint.discA)
+    model.discriminator_B.load_state_dict(checkpoint.discB)
+
+    return model
 
 
 class Controller:
@@ -18,9 +35,6 @@ class Controller:
         self.start_window = StartWindow()
         self.upload_window = UploadWindow()
         self.results_window = None
-
-    # self.results_window = ResultsWindow()
-    # self.finish_window = FinishWindow()
 
     def show_start_window(self):
         self.start_window.switch_window.connect(self.show_upload_window)
@@ -35,16 +49,6 @@ class Controller:
         self.results_window = ResultsWindow(text)
         self.upload_window.close()
         self.results_window.show()
-
-    # def show_results_window(self):
-    #     self.results_window.switch_window.connect(self.show_finish_window)
-    #     self.upload_window.close()
-    #     self.results_window.show()
-    #
-    # def show_finish_window(self):
-    #     self.finish_window = FinishWindow()
-    #     self.results_window.close()
-    #     self.finish_window.show()
 
 
 class StartWindow(QtWidgets.QWidget):
@@ -112,15 +116,6 @@ class UploadWindow(QtWidgets.QWidget):
         self.setLayout(self.layout)
         self.layout.addWidget(self.upload_button)
 
-        # Choose from sample Button Text
-        font.setPointSize(11)
-        self.choose_button = QtWidgets.QPushButton("Choose Button")
-        self.choose_button.setFont(font)
-        self.choose_button.setToolTip('This is for choosing image from the dataset samples')
-        self.choose_button.clicked.connect(self.choose_button_on_click)
-        self.setLayout(self.layout)
-        self.layout.addWidget(self.choose_button)
-
         # Button Text
         self.convert_button = QtWidgets.QPushButton("Convert Button")
         self.convert_button.setFont(font)
@@ -133,10 +128,9 @@ class UploadWindow(QtWidgets.QWidget):
     def convert_button_on_click(self):
         self.switch_window.emit("resu")
 
-    def choose_button_on_click(self):
-        pass
-
     def upload_button_on_click(self):
+        global IMAGE_TO_CONVERT
+
         imagePath, _ = QFileDialog.getOpenFileName(None, 'OpenFile', '', "Image file(*.jpg  *.png, *.jpeg)")
         pixmap = QPixmap(imagePath).scaled(256, 256)
 
@@ -146,7 +140,7 @@ class UploadWindow(QtWidgets.QWidget):
         self.upload_button.setText(imagePath)
         self.upload_button.setStyleSheet('QPushButton {color: green;}')
 
-        print(imagePath)
+        IMAGE_TO_CONVERT = imagePath
 
 
 class ResultsWindow(QtWidgets.QWidget):
@@ -156,17 +150,41 @@ class ResultsWindow(QtWidgets.QWidget):
         self.setWindowTitle(NAME)
         self.setGeometry(TOP, LEFT, WIDTH, HEIGHT)
 
-        layout = QtWidgets.QGridLayout()
+        self.layout = QtWidgets.QGridLayout()
 
-        self.label = QtWidgets.QLabel(text)
-        layout.addWidget(self.label)
+        # font
+        font = self.font()
+        font.setPointSize(16)
 
+        # Title
+        self.text = QtWidgets.QLabel("Results", self)
+        self.text.setAlignment(QtCore.Qt.AlignHCenter)
+        self.text.setFont(font)
+        self.layout.addWidget(self.text)
+
+        # image
+        self.image1 = QtWidgets.QLabel(self)
+        self.image1.move(50, 100)
+        pixmap = QPixmap(IMAGE_TO_CONVERT).scaled(256, 256)
+        self.image1.setPixmap(pixmap)
+        self.image1.adjustSize()
+
+        pic2_offset = 256 + 100
+        self.image1 = QtWidgets.QLabel(self)
+        self.image1.move(pic2_offset, 100)
+
+        model = load_model()
+        pixmap = QPixmap("C:/Users/karin/Downloads/20220306_205938.jpg").scaled(256, 256)
+        self.image1.setPixmap(pixmap)
+        self.image1.adjustSize()
+
+        font.setPointSize(11)
         self.button = QtWidgets.QPushButton('Close')
+        self.button.setFont(font)
         self.button.clicked.connect(self.close)
+        self.layout.addWidget(self.button)
 
-        layout.addWidget(self.button)
-
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
 
 def main():
@@ -178,5 +196,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
