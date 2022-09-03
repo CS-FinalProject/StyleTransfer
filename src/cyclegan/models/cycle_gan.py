@@ -203,7 +203,7 @@ class CycleGAN(BaseModel):
         optimizer.zero_grad()
 
         real_image_loss = self.adversarial_loss_func(discriminator(real_image), real_label)
-        fake_image_loss = self.adversarial_loss_func(discriminator(fake_image), fake_label)
+        fake_image_loss = self.adversarial_loss_func(discriminator(fake_image.detach()), fake_label)
         total_loss = (real_image_loss + fake_image_loss) / 2
 
         total_loss.backward()
