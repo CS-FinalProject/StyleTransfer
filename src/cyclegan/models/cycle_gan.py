@@ -115,69 +115,10 @@ class CycleGAN(BaseModel):
         return self.generator_B2A(image)
 
     def step_lr_schedulers(self):
-        self.gen_lr_scheduler.step()
-        self.discA_lr_scheduler.step()
-        self.discB_lr_scheduler.step()
-
-    # def train_model(self, real_imageA: torch.Tensor, real_imageB: torch.Tensor) -> dict:
-    #     losses = dict()
-
-    #     with torch.autograd.set_detect_anomaly(True):
-    #         self.gen_optim.zero_grad()
-
-    #         batch_size = real_imageA.shape[0]
-    #         real_label = torch.full((batch_size, 1), 1, device=self.device, dtype=torch.float32)
-    #         fake_label = torch.full((batch_size, 1), 0, device=self.device, dtype=torch.float32)
-
-    #         #########################################################
-    #         # Update the generators with CycleGAN and Identity      #
-    #         #########################################################
-    #         # self.discriminator_A.set_requires_grad(False)
-    #         # self.discriminator_B.set_requires_grad(False)
-
-    #         # Identity loss
-    #         losses["identity_A2B"], losses["identity_B2A"] = self.identity_loss(real_imageA, real_imageB)
-
-    #         # Adversarial Loss
-    #         losses["genB2A_adv"] = self.adversarial_loss_func(
-    #             self.discriminator_A(self.generator_B2A(real_imageB)), real_label)
-
-    #         losses["genA2B_adv"] = self.adversarial_loss_func(
-    #             self.discriminator_B(self.generator_A2B(real_imageA)), real_label)
-
-    #         # Cycle GAN loss
-    #         losses["cycle_A2B"], losses["cycle_B2A"] = self.cycle_loss(real_imageA, real_imageB)
-
-    #         total_gen_loss = losses["cycle_A2B"] + losses["cycle_B2A"] + \
-    #             losses["identity_A2B"] + losses["identity_B2A"] +\
-    #             losses["genB2A_adv"] + losses["genA2B_adv"]
-    #         total_gen_loss.backward()
-    #         self.gen_optim.step()
-
-    #         #####################################################
-    #         # Update the discriminators using adversarial loss  #
-    #         #####################################################
-    #         self.discA_optim.zero_grad()
-    #         self.discB_optim.zero_grad()
-
-    #         # self.discriminator_A.set_requires_grad(True)
-    #         # self.discriminator_B.set_requires_grad(True)
-
-    #         losses["discA_adversarial"] = self.adversarial_loss(self.discriminator_A, self.discA_optim, real_imageA,
-    #                                                             self.generator_B2A.last_generated.pop().detach())
-    #         losses["discA_adversarial"].backward()
-    #         losses["discB_adversarial"] = self.adversarial_loss(self.discriminator_B, self.discB_optim, real_imageB,
-    #                                                             self.generator_A2B.last_generated.pop().detach())
-    #         losses["discB_adversarial"].backward()
-    #         self.discA_optim.step()
-    #         self.discB_optim.step()
-    #         self.gen_optim.step()
-
-    #         self.gen_lr_scheduler.step()
-    #         self.discA_lr_scheduler.step()
-    #         self.discB_lr_scheduler.step()
-
-    #     return losses
+        # self.gen_lr_scheduler.step()
+        # self.discA_lr_scheduler.step()
+        # self.discB_lr_scheduler.step()
+        pass
 
     def update_generators(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor,
                           real_label: torch.Tensor):
