@@ -21,7 +21,7 @@ parser.add_argument("--model-path", type=str,
                     help="Path to a model file, if wanted from a specific model")
 parser.add_argument("--cuda", action="store_true", help="Enables cuda")
 parser.add_argument("--image-size", type=int, default=256,
-                    help="size of the data crop (squared assumed). (default:256)")
+                    help="size of the scripts crop (squared assumed). (default:256)")
 parser.add_argument("--manualSeed", type=int,
                     help="Seed for initializing training. (default:none)")
 parser.add_argument("--is-inverse", type=bool, help="Map from B to A", default=False)

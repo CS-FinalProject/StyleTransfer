@@ -36,20 +36,13 @@ class CycleGAN(BaseModel):
         self.adversarial_loss_func = nn.MSELoss()
         self.cycle_loss_func = torch.nn.L1Loss()
 
-        ##############
-        # Optimizers #
-        ##############
+        # Optimizers
         self.gen_optim = torch.optim.Adam(chain(self.generator_A2B.parameters(), self.generator_B2A.parameters()),
                                           lr=lr, betas=(0.5, 0.999))
         self.discA_optim = torch.optim.Adam(
             self.discriminator_A.parameters(), lr=lr, betas=(0.5, 0.999))
         self.discB_optim = torch.optim.Adam(
             self.discriminator_B.parameters(), lr=lr, betas=(0.5, 0.999))
-
-        # Defining Decay LR - Gradually changing the LR
-        # self.gen_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.gen_optim, step_size=decay_epoch, gamma=0.1)
-        # self.discA_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discA_optim, step_size=decay_epoch, gamma=0.1)
-        # self.discB_lr_scheduler = torch.optim.lr_scheduler.StepLR(self.discB_optim, step_size=decay_epoch, gamma=0.1)
 
     def init_models(self, cont: bool) -> None:
         # Load the latest models if we want to continue learning
@@ -113,12 +106,6 @@ class CycleGAN(BaseModel):
         if not is_inverse:
             return self.generator_A2B(image)
         return self.generator_B2A(image)
-
-    def step_lr_schedulers(self):
-        # self.gen_lr_scheduler.step()
-        # self.discA_lr_scheduler.step()
-        # self.discB_lr_scheduler.step()
-        pass
 
     def update_generators(self, real_image_A: torch.Tensor, real_image_B: torch.Tensor,
                           real_label: torch.Tensor):

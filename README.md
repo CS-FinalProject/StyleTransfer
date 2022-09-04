@@ -57,7 +57,7 @@ $ pip3 install -r requirements.txt
 #### Download dataset
 
 ```bash
-$ ./data/get_dataset.sh
+$ ./scripts/get_dataset.sh
 ```
 
 ### Test

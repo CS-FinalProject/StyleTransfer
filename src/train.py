@@ -21,7 +21,7 @@ def arguments_parsing():
     parser = argparse.ArgumentParser(
         description="Style Transfer training")
     parser.add_argument("--dataroot", type=str, default=".",
-                        help="path to datasets. (default:./data)")
+                        help="path to datasets. (default:./scripts)")
     parser.add_argument("--epochs", default=200, type=int, metavar="N",
                         help="number of total epochs to run")
     parser.add_argument("--decay_epochs", type=int, default=100,
@@ -37,7 +37,7 @@ def arguments_parsing():
     parser.add_argument("--continue-training", type=bool, default=False,
                         help="If this flag is true, then the training will resume from the last checkpoint")
     parser.add_argument("--image-size", type=int, default=256,
-                        help="size of the data crop (squared assumed). (default:256)")
+                        help="size of the scripts crop (squared assumed). (default:256)")
     parser.add_argument("--outf", default="./outputs",
                         help="folder to output images. (default:`./outputs`).")
     parser.add_argument("--manualSeed", type=int,
@@ -225,8 +225,6 @@ def train(args, device, run):
             wandb.log(losses)
 
             models_checkpoints(image_A, image_B, args, epoch_idx, batch_idx, cycle_gan_model, run)
-
-        # cycle_gan_model.step_lr_schedulers()
 
 
 def main():

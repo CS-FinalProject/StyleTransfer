@@ -19,12 +19,12 @@ def arguments_parsing():
     parser = argparse.ArgumentParser(
         description="Test model results of Style Transfer")
     parser.add_argument("--dataroot", type=str, default=".",
-                        help="path to datasets. (default:./data)")
+                        help="path to datasets. (default:./scripts)")
     parser.add_argument("--cuda", action="store_true", help="Enables cuda")
     parser.add_argument("--outf", default="./results",
                         help="folder to output images. (default: `./results`).")
     parser.add_argument("--image-size", type=int, default=256,
-                        help="size of the data crop (squared assumed). (default:256)")
+                        help="size of the scripts crop (squared assumed). (default:256)")
     parser.add_argument("--manualSeed", type=int,
                         help="Seed for initializing training. (default:none)")
     parser.add_argument("--model-path", type=str,
@@ -81,7 +81,7 @@ def test(args, device, run):
     model = create_and_load_model(args, device, run)
 
     for i, data in progress_bar:
-        # get batch size data
+        # get batch size scripts
         real_images_A = data["A"].to(device)
         real_images_B = data["B"].to(device)
 
