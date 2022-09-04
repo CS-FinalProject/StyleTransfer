@@ -12,11 +12,14 @@ This repository is a simplified implementation of [Unpaired Image-to-Image Trans
     * [Clone and install requirements](#clone-and-install-requirements)
     * [Download pretrained weights](#download-pretrained-weights)
     * [Download dataset](#download-dataset)
-4. [Test](#test)
-5. [Train](#train)
+4. [Train](#train)
     * [Example](#example)
     * [Resume training](#resume-training)
-6. [Credit](#credit)
+5. [Credit](#credit)
+
+## Results
+![Real](assets/12.jpg)
+![Fake](outputs/gui/gui_result.png)
 
 ### About Generative Adversarial Networks
 Generative Adversarial Networks, or GANs for short, are tasks in which a model can generate new examples which
@@ -81,16 +84,10 @@ optional arguments:
 
 ```
 
-The following commands can be used to test the whole test.
-
-```bash
-$ python3 test.py --cuda
-```
-
 For single image processing, use the following command:
 
 ```bash
-$ python3 test_image.py --file assets/cezanne.png --cuda
+$ python3 test_image.py --file assets/1.png --cuda --outf <out>
 ```
 
 ### Train
@@ -142,21 +139,6 @@ $ python3 train.py --cuda --save_model_freq 3000 --continue-training=True
 
 #### Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks
 _Jun-Yan Zhu, Taesung Park, Phillip Isola, Alexei A. Efros_ <br>
-
-**Abstract** <br>
-Image-to-image translation is a class of vision and graphics problems where the goal 
-is to learn the mapping between an input image and an output image using a training 
-set of aligned image pairs. However, for many tasks, paired training data will not be 
-available. We present an approach for learning to translate an image from a source 
-domain X to a target domain Y in the absence of paired examples. Our goal is to learn 
-a mapping G:X→Y such that the distribution of images from G(X) is indistinguishable
-from the distribution Y using an adversarial loss. Because this mapping is highly
-under-constrained, we couple it with an inverse mapping F:Y→X and introduce a cycle 
-consistency loss to push F(G(X))≈X (and vice versa). Qualitative results are presented 
-on several tasks where paired training data does not exist, including collection 
-style transfer, object transfiguration, season transfer, photo enhancement, etc. 
-Quantitative comparisons against several prior methods demonstrate the superiority
-of our approach.
 
 [[Paper]](https://arxiv.org/pdf/1703.10593)) [[Authors' Implementation]](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix)
 
