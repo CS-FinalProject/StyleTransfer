@@ -1,9 +1,12 @@
+import os
 import sys
 from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5 import QtCore, QtWidgets
-from torch import load
-
+import torch
+import torchvision.utils as vutils
+from torchvision.transforms.functional import to_tensor
+from PIL import Image
 from src.cyclegan.models.cycle_gan import CycleGAN
 
 TOP = 100
@@ -15,18 +18,27 @@ NAME = 'Style Transfer'
 IMAGE_TO_CONVERT = None
 
 
-def load_model(path):
-    device = torch.device("cuda:0" if args_parser.cuda and torch.cuda.is_available() else "cpu")
-    checkpoint = load(path, map_location=device)
+def load_model():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Loading sub-models
-    model = CycleGAN()
+    # create model
+    model = CycleGAN(0, 0, True, device, 0, 0)
+
+    # load_checkpoint(model, run, device)
+    checkpoint = torch.load(os.path.join("..", "final_model.pth"), map_location=device)
     model.generator_A2B.load_state_dict(checkpoint.genA2B)
     model.generator_B2A.load_state_dict(checkpoint.genB2A)
-    model.discriminator_A.load_state_dict(checkpoint.discA)
-    model.discriminator_B.load_state_dict(checkpoint.discB)
 
+    model = model.to(device)
     return model
+
+
+def forward_model(model, path):
+    input_image = to_tensor(Image.open(path))
+    output_image = model(input_image)
+    p = os.path.join("..", "outputs", "gui", "gui_result.png")
+    vutils.save_image(output_image, p, normalize=True)
+    return p
 
 
 class Controller:
@@ -109,7 +121,7 @@ class UploadWindow(QtWidgets.QWidget):
 
         # Upload Button Text
         font.setPointSize(11)
-        self.upload_button = QtWidgets.QPushButton("Upload Button")
+        self.upload_button = QtWidgets.QPushButton("Upload")
         self.upload_button.setFont(font)
         self.upload_button.setToolTip('This is load picture button')
         self.upload_button.clicked.connect(self.upload_button_on_click)
@@ -117,7 +129,7 @@ class UploadWindow(QtWidgets.QWidget):
         self.layout.addWidget(self.upload_button)
 
         # Button Text
-        self.convert_button = QtWidgets.QPushButton("Convert Button")
+        self.convert_button = QtWidgets.QPushButton("Convert")
         self.convert_button.setFont(font)
         self.convert_button.setToolTip('Transfer the image style')
         self.convert_button.clicked.connect(self.convert_button_on_click)
@@ -131,7 +143,8 @@ class UploadWindow(QtWidgets.QWidget):
     def upload_button_on_click(self):
         global IMAGE_TO_CONVERT
 
-        imagePath, _ = QFileDialog.getOpenFileName(None, 'OpenFile', '', "Image file(*.jpg  *.png, *.jpeg)")
+        imagePath, _ = QFileDialog.getOpenFileName(None, 'OpenFile', os.path.join("..", "assets"),
+                                                   "Image file(*.jpg  *.png, *.jpeg)")
         pixmap = QPixmap(imagePath).scaled(256, 256)
 
         self.image.setPixmap(pixmap)
@@ -174,7 +187,9 @@ class ResultsWindow(QtWidgets.QWidget):
         self.image1.move(pic2_offset, 100)
 
         model = load_model()
-        pixmap = QPixmap("C:/Users/karin/Downloads/20220306_205938.jpg").scaled(256, 256)
+        path = forward_model(model, IMAGE_TO_CONVERT)
+
+        pixmap = QPixmap(path).scaled(256, 256)
         self.image1.setPixmap(pixmap)
         self.image1.adjustSize()
 
@@ -189,6 +204,8 @@ class ResultsWindow(QtWidgets.QWidget):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
+    icon_path = os.path.join("..", "media", "logo.png")
+    app.setWindowIcon(QIcon(icon_path))
     controller = Controller()
     controller.show_start_window()
     sys.exit(app.exec_())
