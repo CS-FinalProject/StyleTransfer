@@ -24,12 +24,13 @@ parser.add_argument("--image-size", type=int, default=256,
                     help="size of the scripts crop (squared assumed). (default:256)")
 parser.add_argument("--manualSeed", type=int,
                     help="Seed for initializing training. (default:none)")
-parser.add_argument("--is-inverse", type=bool, help="Map from B to A", default=False)
+parser.add_argument("--is-inverse", type=bool, help="Map from B to A", default=True)
+parser.add_argument("--outf", type=str, help="Path of result image", default=False)
 
 args = parser.parse_args()
 print(args)
 
-run = wandb.init(project="style-transfer")
+# run = wandb.init(project="style-transfer")
 
 if args.manualSeed is None:
     args.manualSeed = random.randint(1, 10000)
@@ -47,12 +48,15 @@ device = torch.device("cuda:0" if args.cuda else "cpu")
 # create model
 model = CycleGAN(0, 0, True, device, 0, 0)
 
-load_checkpoint(model, run, device)
+# load_checkpoint(model, run, device)
+checkpoint = torch.load(args.model_path, map_location=device)
+model.generator_A2B.load_state_dict(checkpoint.genA2B)
+model.generator_B2A.load_state_dict(checkpoint.genB2A)
 
 model = model.to(device)
 
 # Set model mode
-model.eval()
+# model.eval()
 
 # Load image
 image = Image.open(args.file)
