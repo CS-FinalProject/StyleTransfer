@@ -9,6 +9,9 @@ __pycache__/
 wandb/
 dataset/
 venv/
+models/
+src/artifacts/
+artifacts/
 
 # Distribution / packaging
 .Python
@@ -125,18 +128,18 @@ dmypy.json
 .DS_Store
 
 # custom
-data/ae_photos
-data/apple2orange
-data/cezanne2photo
-data/facades
-data/horse2zebra
-data/iphone2dslr_flower
-data/maps
-data/monet2photo
-data/selfie2anime
-data/summer2winter_yosemite
-data/ukiyoe2photo
-data/vangogh2photo
+scripts/ae_photos
+scripts/apple2orange
+scripts/cezanne2photo
+scripts/facades
+scripts/horse2zebra
+scripts/iphone2dslr_flower
+scripts/maps
+scripts/monet2photo
+scripts/selfie2anime
+scripts/summer2winter_yosemite
+scripts/ukiyoe2photo
+scripts/vangogh2photo
 
 outputs/
 results/
