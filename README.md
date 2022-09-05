@@ -49,6 +49,11 @@ The forward mapping generator is notated as $(G)$, and the backward one as $(F)$
 
 ### Installation and Usage
 
+We created a GUI for a user-friendly environment, on order to use it just run the `gui.py` file:
+```bash
+$ python3 gui.py
+```
+
 #### Clone and install requirements
 
 ```bash
