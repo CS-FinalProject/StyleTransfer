@@ -141,8 +141,9 @@ scripts/summer2winter_yosemite
 scripts/ukiyoe2photo
 scripts/vangogh2photo
 
-outputs/
 results/
+outputs/A/
+outputs/B/
 
 weights/ae_photos
 weights/apple2orange
