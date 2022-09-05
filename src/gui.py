@@ -7,7 +7,7 @@ import torch
 import torchvision.utils as vutils
 from torchvision.transforms.functional import to_tensor
 from PIL import Image
-from src.cyclegan.models.cycle_gan import CycleGAN
+from cyclegan.models.cycle_gan import CycleGAN
 
 TOP = 100
 LEFT = 100
